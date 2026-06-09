@@ -76,7 +76,7 @@ const VOTED_KEY = 'palette-poll-voted';
       border-radius: 14px;
       padding: 1.5rem;
       max-width: 520px;
-      margin: 1.5rem 0 0;
+      margin: 2rem 0 0;
     }
     .poll-header {
       display: flex; align-items: flex-start; gap: 0.85rem; margin-bottom: 1.25rem;

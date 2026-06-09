@@ -130,8 +130,6 @@ interface ChartCard { type: string; dutchName: string; englishName: string; desc
             }
           </div>
 
-          <app-palette-poll></app-palette-poll>
-
           <div class="cb-note">
             <span class="cb-icon">♿</span>
             <span>
@@ -139,6 +137,8 @@ interface ChartCard { type: string; dutchName: string; englishName: string; desc
               Gebruik daarnaast altijd labels, patronen of vormen als tweede encoding.
             </span>
           </div>
+
+          <app-palette-poll></app-palette-poll>
 
           <h3 class="palette-title" style="margin-top: 2.5rem;">Semantisch palet — status &amp; betekenis</h3>
           <p class="palette-note">
@@ -408,7 +408,6 @@ interface ChartCard { type: string; dutchName: string; englishName: string; desc
       margin-top: 0.1rem;
     }
     .cb-note {
-      margin-top: 1.5rem;
       display: flex;
       align-items: flex-start;
       gap: 0.75rem;
