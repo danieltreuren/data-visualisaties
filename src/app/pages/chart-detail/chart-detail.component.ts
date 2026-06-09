@@ -21,6 +21,35 @@ const AXIS_STYLE = {
 const GRID  = { left: 16, right: 16, top: 16, bottom: 0, containLabel: true };
 const SPLIT = { splitLine: { lineStyle: { color: '#EEF2F5', type: 'dashed' as const } } };
 
+const MONTHS = ['Jan','Feb','Mrt','Apr','Mei','Jun'];
+const CAT7   = ['Poliklinisch','Klinisch','Spoed','Revalidatie','Dagbehandeling','GGZ','Overig'];
+const CAT7_TOTALS = [1240,870,540,320,290,180,120];
+const DEPT7      = ['Oncologie','Cardiologie','Orthopedie','Neurologie','Dermatologie','Chirurgie','Psychiatrie'];
+const DEPT7_DATA = [890,760,630,480,340,280,195];
+const MONTHLY7   = [
+  [420,380,510,470,530,490],
+  [180,210,160,230,195,215],
+  [95,110,88,120,105,98],
+  [60,75,55,80,70,65],
+  [140,125,155,135,160,145],
+  [85,90,80,95,88,92],
+  [45,50,42,55,48,52],
+];
+const LINE7_NAMES = ['2025','2024','2023','2022','2021','2020','2019'];
+const LINE7_DATA  = [
+  [1240,1380,1520,1290,1650,1430],
+  [1180,1290,1410,1350,1580,1390],
+  [1100,1200,1320,1250,1480,1300],
+  [1050,1150,1250,1180,1400,1220],
+  [990,1080,1180,1120,1320,1160],
+  [920,1010,1100,1050,1240,1090],
+  [860,940,1020,980,1160,1010],
+];
+const PIE7_DATA = [1240,540,320,290,180,120,80];
+const SCATTER7  = ['Oncologie','Cardiologie','Orthopedie','Neurologie','Dermatologie','Chirurgie','Psychiatrie'];
+const SCATTER7_SEEDS: [number,number][] = [[20,60],[50,45],[80,55],[30,75],[65,35],[15,80],[90,40]];
+const SUPPORTS_CAT = new Set(['staafdiagram','gestapeld-staafdiagram','lijndiagram','cirkeldiagram','spreidingsdiagram','vlakdiagram']);
+
 const CHART_DATA: Record<string, ChartInfo> = {
   'staafdiagram': {
     dutchName: 'Staafdiagram', englishName: 'Bar Chart', category: 'Vergelijking',
@@ -133,6 +162,17 @@ const FALLBACK: ChartInfo = {
         </div>
 
         <p class="description">{{ chart.description }}</p>
+
+        @if (supportsCategories) {
+          <div class="cat-control">
+            <span class="cat-label">Aantal categorieën</span>
+            <div class="cat-btns">
+              @for (n of catOptions; track n) {
+                <button class="cat-btn" [class.active]="categoryCount === n" (click)="setCategoryCount(n)">{{ n }}</button>
+              }
+            </div>
+          </div>
+        }
 
         <!-- ── Voorbeeldvisualisaties ── -->
         <div class="chart-section">
@@ -301,6 +341,12 @@ const FALLBACK: ChartInfo = {
     .a11y-card { background: #F0F9FF; border: 1px solid #B4E7FF; border-radius: 12px; padding: 1.75rem; }
     .a11y-card ul { margin: 0; padding: 0 0 0 1.25rem; }
     .a11y-card li { font-size: .88rem; color: #3D5166; line-height: 1.65; margin-bottom: .4rem; }
+    .cat-control { display: flex; align-items: center; gap: 14px; margin-bottom: 2rem; padding: 14px 16px; background: #fff; border: 1px solid #E1E9EF; border-radius: 10px; }
+    .cat-label { font-size: 13px; font-weight: 500; color: #566A78; white-space: nowrap; }
+    .cat-btns { display: flex; gap: 5px; }
+    .cat-btn { width: 34px; height: 34px; border-radius: 7px; border: 1px solid #D0DCE4; background: #fff; font-size: 13px; font-weight: 500; color: #475055; cursor: pointer; font-family: inherit; transition: all .15s; }
+    .cat-btn:hover:not(.active) { border-color: #009BE5; color: #009BE5; background: #EAF8FF; }
+    .cat-btn.active { background: #009BE5; color: #fff; border-color: #009BE5; }
     @media (max-width: 700px) { .info-grid, .chart-examples { grid-template-columns: 1fr; } h1 { font-size: 1.9rem; } }
   `]
 })
@@ -308,6 +354,10 @@ export class ChartDetailComponent implements OnInit {
   chart: ChartInfo = FALLBACK;
   chartType = '';
   opts: Record<string, EChartsOption> = {};
+  categoryCount = 3;
+  readonly catOptions = [1,2,3,4,5,6,7];
+
+  get supportsCategories(): boolean { return SUPPORTS_CAT.has(this.chartType); }
 
   constructor(private route: ActivatedRoute) {}
 
@@ -317,127 +367,125 @@ export class ChartDetailComponent implements OnInit {
     this.buildCharts();
   }
 
+  setCategoryCount(n: number): void {
+    this.categoryCount = n;
+    this.buildCharts();
+  }
+
   private buildCharts(): void {
-    const months  = ['Jan','Feb','Mrt','Apr','Mei','Jun'];
+    const n       = this.categoryCount;
     const tooltip = { trigger: 'axis' as const, axisPointer: { type: 'shadow' as const } };
     const legend  = { bottom: 0, textStyle: { color: '#566A78', fontSize: 11 } };
     const gridLeg = { left: 16, right: 16, top: 16, bottom: 40, containLabel: true };
 
     // ── BAR ──────────────────────────────────────────────────────────
     this.opts['barV'] = {
-      tooltip,
-      grid: GRID,
-      xAxis: { type: 'category', data: ['Poliklinisch','Dagbehandeling','Klinisch','Spoed','Revalidatie'], ...AXIS_STYLE },
+      tooltip, grid: GRID,
+      xAxis: { type: 'category', data: CAT7.slice(0, n), ...AXIS_STYLE },
       yAxis: { type: 'value', ...SPLIT, axisLabel: { color: '#566A78', fontSize: 11 } },
-      series: [{ type: 'bar', data: [1240,870,540,320,290], barMaxWidth: 52,
-        itemStyle: { color: C[0], borderRadius: [4,4,0,0] },
+      series: [{ type: 'bar', barMaxWidth: 52,
+        data: CAT7_TOTALS.slice(0, n).map((v, i) => ({ value: v, itemStyle: { color: C[i], borderRadius: [4,4,0,0] } })),
         label: { show: true, position: 'top', color: '#566A78', fontSize: 11 } }]
     };
     this.opts['barH'] = {
-      tooltip,
-      grid: GRID,
+      tooltip, grid: GRID,
       xAxis: { type: 'value', ...SPLIT, axisLabel: { color: '#566A78', fontSize: 11 } },
-      yAxis: { type: 'category', data: ['Oncologie','Cardiologie','Orthopedie','Neurologie','Dermatologie'].reverse(), ...AXIS_STYLE },
-      series: [{ type: 'bar', data: [890,760,630,480,340].reverse(), barMaxWidth: 36,
-        itemStyle: { color: C[0], borderRadius: [0,4,4,0] },
+      yAxis: { type: 'category', data: DEPT7.slice(0, n).reverse(), ...AXIS_STYLE },
+      series: [{ type: 'bar', barMaxWidth: 36,
+        data: DEPT7_DATA.slice(0, n).reverse().map((v, i, arr) => ({ value: v, itemStyle: { color: C[arr.length - 1 - i], borderRadius: [0,4,4,0] } })),
         label: { show: true, position: 'right', color: '#566A78', fontSize: 11 } }]
     };
 
     // ── STACKED BAR ───────────────────────────────────────────────────
-    const poli = [420,380,510,470,530,490], klin = [180,210,160,230,195,215], spoed = [95,110,88,120,105,98];
-    const baseStack: EChartsOption = { tooltip, legend, grid: gridLeg,
-      xAxis: { type: 'category', data: months, ...AXIS_STYLE },
+    const stackSeries = MONTHLY7.slice(0, n);
+    const stackTotals = MONTHS.map((_: string, mi: number) => stackSeries.reduce((s: number, d: number[]) => s + d[mi], 0));
+    const stackBase: EChartsOption = { tooltip, legend, grid: gridLeg,
+      xAxis: { type: 'category', data: MONTHS, ...AXIS_STYLE },
       yAxis: { type: 'value', ...SPLIT, axisLabel: { color: '#566A78', fontSize: 11 } } };
-    this.opts['stackedV'] = { ...baseStack, series: [
-      { name:'Poliklinisch', type:'bar', stack:'t', data: poli,  itemStyle:{ color: C[0] }, barMaxWidth: 52 },
-      { name:'Klinisch',     type:'bar', stack:'t', data: klin,  itemStyle:{ color: C[1] } },
-      { name:'Spoed',        type:'bar', stack:'t', data: spoed, itemStyle:{ color: C[2], borderRadius:[4,4,0,0] } },
-    ]};
-    const pct = (arr: number[], i: number) => Math.round(arr[i] / (poli[i]+klin[i]+spoed[i]) * 100);
-    this.opts['stacked100'] = { ...baseStack,
-      yAxis: { type:'value', max:100, axisLabel:{ color:'#566A78', fontSize:11, formatter:'{value}%' }, ...SPLIT },
-      series: [
-        { name:'Poliklinisch', type:'bar', stack:'t', data: months.map((_,i)=>pct(poli,i)),  itemStyle:{ color: C[0] }, barMaxWidth: 52 },
-        { name:'Klinisch',     type:'bar', stack:'t', data: months.map((_,i)=>pct(klin,i)),  itemStyle:{ color: C[1] } },
-        { name:'Spoed',        type:'bar', stack:'t', data: months.map((_,i)=>pct(spoed,i)), itemStyle:{ color: C[2], borderRadius:[4,4,0,0] } },
-      ]};
+    this.opts['stackedV'] = { ...stackBase, series: stackSeries.map((data: number[], i: number) => ({
+      name: CAT7[i], type: 'bar' as const, stack: 't', data, barMaxWidth: 52,
+      itemStyle: { color: C[i], borderRadius: i === n - 1 ? [4,4,0,0] : [0,0,0,0] }
+    }))};
+    this.opts['stacked100'] = { ...stackBase,
+      yAxis: { type: 'value' as const, max: 100, ...SPLIT, axisLabel: { color: '#566A78', fontSize: 11, formatter: '{value}%' } },
+      series: stackSeries.map((data: number[], i: number) => ({
+        name: CAT7[i], type: 'bar' as const, stack: 't', barMaxWidth: 52,
+        data: data.map((v: number, mi: number) => Math.round(v / stackTotals[mi] * 100)),
+        itemStyle: { color: C[i], borderRadius: i === n - 1 ? [4,4,0,0] : [0,0,0,0] }
+      }))
+    };
 
     // ── LINE ──────────────────────────────────────────────────────────
-    const visits25 = [1240,1380,1520,1290,1650,1430];
-    const visits24 = [1180,1290,1410,1350,1580,1390];
-    const lineAxis: EChartsOption = { tooltip: { trigger:'axis' as const },
-      grid: gridLeg,
-      xAxis: { type:'category', data: months, ...AXIS_STYLE, boundaryGap: false },
-      yAxis: { type:'value', min: 1000, ...SPLIT, axisLabel:{ color:'#566A78', fontSize:11 } } };
-    this.opts['lineSingle'] = { ...lineAxis, legend: undefined, grid: GRID, series: [{
-      type:'line', data: visits25, smooth: true,
-      lineStyle:{ color: C[0], width:2.5 }, itemStyle:{ color: C[0] },
-      areaStyle:{ color: C[0], opacity: 0.08 },
-      label:{ show: false }
+    const lineBase: EChartsOption = { tooltip: { trigger: 'axis' as const }, grid: GRID,
+      xAxis: { type: 'category', data: MONTHS, ...AXIS_STYLE, boundaryGap: false },
+      yAxis: { type: 'value', min: 800, ...SPLIT, axisLabel: { color: '#566A78', fontSize: 11 } } };
+    this.opts['lineSingle'] = { ...lineBase, series: [{
+      type: 'line', data: LINE7_DATA[0], smooth: true,
+      lineStyle: { color: C[0], width: 2.5 }, itemStyle: { color: C[0] },
+      areaStyle: { color: C[0], opacity: 0.08 }
     }]};
-    this.opts['lineMulti'] = { ...lineAxis, legend, series: [
-      { name:'2025', type:'line', data: visits25, smooth: true, lineStyle:{ color: C[0], width:2.5 }, itemStyle:{ color: C[0] } },
-      { name:'2024', type:'line', data: visits24, smooth: true, lineStyle:{ color: C[6], width:2, type:'dashed' }, itemStyle:{ color: C[6] } },
-    ]};
+    this.opts['lineMulti'] = { ...lineBase, grid: gridLeg, legend,
+      series: LINE7_DATA.slice(0, n).map((data: number[], i: number) => ({
+        name: LINE7_NAMES[i], type: 'line' as const, data, smooth: true,
+        lineStyle: { color: C[i], width: 2.5, type: (i % 2 === 0 ? 'solid' : 'dashed') as 'solid' | 'dashed' },
+        itemStyle: { color: C[i] }
+      }))
+    };
 
     // ── PIE / DONUT ───────────────────────────────────────────────────
-    const pieData = [
-      { value:1240, name:'Poliklinisch',  itemStyle:{ color: C[0] } },
-      { value:540,  name:'Klinisch',      itemStyle:{ color: C[1] } },
-      { value:320,  name:'Spoed',         itemStyle:{ color: C[2] } },
-      { value:290,  name:'Revalidatie',   itemStyle:{ color: C[3] } },
-      { value:110,  name:'Overig',        itemStyle:{ color: C[6] } },
-    ];
+    const pieData = CAT7.slice(0, n).map((name: string, i: number) => ({ value: PIE7_DATA[i], name, itemStyle: { color: C[i] } }));
     this.opts['donut'] = {
-      tooltip: { trigger:'item' as const, formatter:'{b}: {d}%' },
-      legend: { bottom:0, textStyle:{ color:'#566A78', fontSize:11 } },
-      series: [{ type:'pie', radius:['40%','68%'], center:['50%','46%'], data: pieData,
-        label:{ formatter:'{d}%', color:'#1A2B3C', fontSize:11 } }]
+      tooltip: { trigger: 'item' as const, formatter: '{b}: {d}%' },
+      legend: { bottom: 0, textStyle: { color: '#566A78', fontSize: 11 } },
+      series: [{ type: 'pie', radius: ['40%','68%'], center: ['50%','46%'], data: pieData,
+        label: { formatter: '{d}%', color: '#1A2B3C', fontSize: 11 } }]
     };
     this.opts['pie'] = {
-      tooltip: { trigger:'item' as const, formatter:'{b}: {d}%' },
-      legend: { bottom:0, textStyle:{ color:'#566A78', fontSize:11 } },
-      series: [{ type:'pie', radius:'62%', center:['50%','46%'], data: pieData,
-        label:{ formatter:'{b}\n{d}%', color:'#1A2B3C', fontSize:10 } }]
+      tooltip: { trigger: 'item' as const, formatter: '{b}: {d}%' },
+      legend: { bottom: 0, textStyle: { color: '#566A78', fontSize: 11 } },
+      series: [{ type: 'pie', radius: '62%', center: ['50%','46%'], data: pieData,
+        label: { formatter: '{b}\n{d}%', color: '#1A2B3C', fontSize: 10 } }]
     };
 
     // ── SCATTER ───────────────────────────────────────────────────────
-    const scatter1 = Array.from({length:20}, (_,i) => [20+i*3+(Math.sin(i)*5|0), 60+i*1.5+(Math.cos(i)*8|0)]);
-    const scatter2 = Array.from({length:15}, (_,i) => [80+i*2+(Math.sin(i*2)*6|0), 40+i*2+(Math.cos(i*2)*10|0)]);
-    const scatterAxis: EChartsOption = {
-      tooltip: { trigger:'item' as const, formatter: (p: any) => `Duur: ${p.data[0]} min<br>Score: ${p.data[1]}` },
-      grid: GRID,
-      xAxis: { type:'value', name:'Behandelduur (min)', nameTextStyle:{ color:'#566A78', fontSize:11 }, ...AXIS_STYLE, ...SPLIT },
-      yAxis: { type:'value', name:'Tevredenheid', nameTextStyle:{ color:'#566A78', fontSize:11 }, ...SPLIT, axisLabel:{ color:'#566A78', fontSize:11 } },
+    const scatterAxes: EChartsOption = {
+      xAxis: { type: 'value', name: 'Behandelduur (min)', nameTextStyle: { color: '#566A78', fontSize: 11 }, ...AXIS_STYLE, ...SPLIT },
+      yAxis: { type: 'value', name: 'Tevredenheid', nameTextStyle: { color: '#566A78', fontSize: 11 }, ...SPLIT, axisLabel: { color: '#566A78', fontSize: 11 } },
     };
-    this.opts['scatter'] = { ...scatterAxis, legend, series: [
-      { name:'Routine', type:'scatter', data: scatter1, symbolSize:8, itemStyle:{ color: C[0], opacity:.75 } },
-      { name:'Complex', type:'scatter', data: scatter2, symbolSize:8, itemStyle:{ color: C[1], opacity:.75 } },
-    ]};
-    const bubble = Array.from({length:12}, (_,i) => [20+i*7, 50+Math.sin(i)*20, 8+i*3]);
-    this.opts['bubble'] = { ...scatterAxis, legend: undefined, grid: GRID, series: [{
-      type:'scatter', data: bubble,
-      symbolSize: (d: number[]) => Math.sqrt(d[2]) * 5,
-      itemStyle:{ color: C[0], opacity:.7 },
-      label:{ show: false }
-    }]};
+    this.opts['scatter'] = { ...scatterAxes,
+      tooltip: { trigger: 'item' as const, formatter: (p: any) => `${p.seriesName}<br>Duur: ${p.data[0]} min<br>Score: ${p.data[1]}` },
+      legend: n > 1 ? legend : undefined, grid: n > 1 ? gridLeg : GRID,
+      series: SCATTER7.slice(0, n).map((name: string, gi: number) => {
+        const [bx, by] = SCATTER7_SEEDS[gi];
+        return { name, type: 'scatter' as const, symbolSize: 8, itemStyle: { color: C[gi], opacity: 0.8 },
+          data: Array.from({ length: 12 }, (_: unknown, i: number) => [bx + i*2 + (Math.sin(i+gi)*5|0), by + i*1.5 + (Math.cos(i+gi)*8|0)]) };
+      })
+    };
+    const bubble = Array.from({length: 12}, (_: unknown, i: number) => [20+i*7, 50+Math.sin(i)*20, 8+i*3]);
+    this.opts['bubble'] = { ...scatterAxes,
+      tooltip: { trigger: 'item' as const, formatter: (p: any) => `Duur: ${p.data[0]} min<br>Score: ${p.data[1]}` },
+      grid: GRID,
+      series: [{ type: 'scatter', data: bubble, symbolSize: (d: number[]) => Math.sqrt(d[2]) * 5, itemStyle: { color: C[0], opacity: 0.7 } }]
+    };
 
     // ── AREA ─────────────────────────────────────────────────────────
-    const areaBase: EChartsOption = {
-      tooltip: { trigger:'axis' as const }, grid: gridLeg, legend,
-      xAxis: { type:'category', data: months, ...AXIS_STYLE, boundaryGap: false },
-      yAxis: { type:'value', ...SPLIT, axisLabel:{ color:'#566A78', fontSize:11 } }
+    this.opts['areaSingle'] = {
+      tooltip: { trigger: 'axis' as const }, grid: GRID,
+      xAxis: { type: 'category', data: MONTHS, ...AXIS_STYLE, boundaryGap: false },
+      yAxis: { type: 'value', ...SPLIT, axisLabel: { color: '#566A78', fontSize: 11 } },
+      series: [{ type: 'line', data: MONTHLY7[0], smooth: true,
+        lineStyle: { color: C[0], width: 2 }, itemStyle: { color: C[0] },
+        areaStyle: { color: C[0], opacity: 0.15 } }]
     };
-    this.opts['areaSingle'] = { ...areaBase, legend: undefined, grid: GRID, series: [{
-      type:'line', data:[420,380,510,470,530,490], smooth:true,
-      lineStyle:{ color: C[0], width:2 }, itemStyle:{ color: C[0] },
-      areaStyle:{ color: C[0], opacity:0.15 }
-    }]};
-    this.opts['areaStacked'] = { ...areaBase, series: [
-      { name:'Poliklinisch', type:'line', stack:'t', smooth:true, data: poli, lineStyle:{ color: C[0] }, itemStyle:{ color: C[0] }, areaStyle:{ color: C[0], opacity:0.6 } },
-      { name:'Klinisch',     type:'line', stack:'t', smooth:true, data: klin, lineStyle:{ color: C[1] }, itemStyle:{ color: C[1] }, areaStyle:{ color: C[1], opacity:0.6 } },
-      { name:'Spoed',        type:'line', stack:'t', smooth:true, data: spoed,lineStyle:{ color: C[2] }, itemStyle:{ color: C[2] }, areaStyle:{ color: C[2], opacity:0.6 } },
-    ]};
+    this.opts['areaStacked'] = {
+      tooltip: { trigger: 'axis' as const }, legend, grid: gridLeg,
+      xAxis: { type: 'category', data: MONTHS, ...AXIS_STYLE, boundaryGap: false },
+      yAxis: { type: 'value', ...SPLIT, axisLabel: { color: '#566A78', fontSize: 11 } },
+      series: MONTHLY7.slice(0, n).map((data: number[], i: number) => ({
+        name: CAT7[i], type: 'line' as const, stack: 't', smooth: true, data,
+        lineStyle: { color: C[i] }, itemStyle: { color: C[i] }, areaStyle: { color: C[i], opacity: 0.6 }
+      }))
+    };
 
     // ── HEATMAP ───────────────────────────────────────────────────────
     const days  = ['Ma','Di','Wo','Do','Vr'];
@@ -458,13 +506,13 @@ export class ChartDetailComponent implements OnInit {
     };
     const depts   = ['Cardiologie','Oncologie','Neurologie','Orthopedie'];
     const hmGrid: [number,number,number][] = [];
-    for (let m = 0; m < months.length; m++)
+    for (let m = 0; m < MONTHS.length; m++)
       for (let d = 0; d < depts.length; d++)
         hmGrid.push([m, d, 100 + Math.round(Math.sin(m+d)*80 + Math.cos(m)*60)]);
     this.opts['heatmapGrid'] = {
       tooltip: { position:'top' as const },
       grid: { left:80, right:40, top:10, bottom:50, containLabel:false },
-      xAxis: { type:'category', data: months, splitArea:{ show:true }, ...AXIS_STYLE },
+      xAxis: { type:'category', data: MONTHS, splitArea:{ show:true }, ...AXIS_STYLE },
       yAxis: { type:'category', data: depts,  splitArea:{ show:true }, ...AXIS_STYLE },
       visualMap: { min:0, max:200, calculable:true, orient:'horizontal', left:'center', bottom:0,
         inRange:{ color:['#EAF8FF','#009BE5','#063EAF'] },
