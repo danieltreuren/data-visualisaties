@@ -17,12 +17,16 @@ import { PaletteSwitcherComponent } from './shared/palette-switcher.component';
         <app-palette-switcher></app-palette-switcher>
       </div>
     </nav>
-    <router-outlet />
+    <div class="content">
+      <router-outlet />
+    </div>
   `,
   styles: [`
     .nav {
-      position: sticky;
+      position: fixed;
       top: 0;
+      left: 0;
+      right: 0;
       z-index: 100;
       background: #fff;
       border-bottom: 1px solid #E1E9EF;
@@ -40,6 +44,7 @@ import { PaletteSwitcherComponent } from './shared/palette-switcher.component';
       gap: 1rem;
     }
     app-palette-switcher { margin-left: auto; }
+    .content { padding-top: 56px; }
     .nav-brand {
       display: flex;
       align-items: center;
