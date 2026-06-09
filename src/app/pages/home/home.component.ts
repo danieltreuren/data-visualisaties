@@ -1,6 +1,7 @@
 import { Component } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
+import { CommentOverlayComponent } from '../../shared/comment-overlay.component';
 
 interface Swatch { name: string; hex: string; role?: string; light?: boolean; }
 interface ChartCard { type: string; dutchName: string; englishName: string; description: string; svgPreview: string; }
@@ -8,9 +9,10 @@ interface ChartCard { type: string; dutchName: string; englishName: string; desc
 @Component({
   selector: 'app-home',
   standalone: true,
-  imports: [RouterLink],
+  imports: [RouterLink, CommentOverlayComponent],
   template: `
     <div class="page">
+      <app-comment-overlay pageId="home"></app-comment-overlay>
 
       <!-- ── Hero ── -->
       <section class="hero">
@@ -193,7 +195,7 @@ interface ChartCard { type: string; dutchName: string; englishName: string; desc
     </div>
   `,
   styles: [`
-    .page { min-height: 100vh; }
+    .page { position: relative; min-height: 100vh; }
     .container { max-width: 1200px; margin: 0 auto; padding: 0 2rem; }
     .section { padding: 5rem 0; }
     .bg-white { background: #fff; }
