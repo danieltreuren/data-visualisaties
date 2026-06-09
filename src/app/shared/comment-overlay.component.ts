@@ -1,10 +1,17 @@
-import { Component, Input, OnInit, HostListener, ChangeDetectorRef, inject } from '@angular/core';
+import { Component, Input, OnInit, OnDestroy, HostListener, ChangeDetectorRef, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { createClient, SupabaseClient, RealtimeChannel } from '@supabase/supabase-js';
 
-interface PinComment {
+const supabase: SupabaseClient = createClient(
+  'https://bbzamujpfkbvfkgazgwn.supabase.co',
+  'sb_publishable_nFa6sDaQA-O4Ldz8neb0Fw_nzzUY-FS'
+);
+
+interface Pin {
   id: string;
-  xPct: number;
-  yPct: number;
+  page_id: string;
+  x_pct: number;
+  y_pct: number;
   name: string;
   text: string;
 }
@@ -20,9 +27,9 @@ interface PinComment {
 
       @for (c of pins; track c.id) {
         <div class="pin"
-             [class.flip-left]="c.xPct > 75"
-             [style.left.%]="c.xPct"
-             [style.top.%]="c.yPct"
+             [class.flip-left]="c.x_pct > 75"
+             [style.left.%]="c.x_pct"
+             [style.top.%]="c.y_pct"
              (mousedown)="startDrag($event, c)"
              (click)="$event.stopPropagation()">
           <span class="pin-dot" [style.background]="pinColor(c.name)">{{ c.name.charAt(0).toUpperCase() }}</span>
@@ -44,10 +51,10 @@ interface PinComment {
 
       @if (pendingPin) {
         <div class="pin-form-wrap"
-             [class.flip-left]="pendingPin.xPct > 70"
-             [class.flip-down]="pendingPin.yPct < 20"
-             [style.left.%]="pendingPin.xPct"
-             [style.top.%]="pendingPin.yPct"
+             [class.flip-left]="pendingPin.x_pct > 70"
+             [class.flip-down]="pendingPin.y_pct < 20"
+             [style.left.%]="pendingPin.x_pct"
+             [style.top.%]="pendingPin.y_pct"
              (click)="$event.stopPropagation()">
           <div class="pin-form">
             <div class="pin-form-title">Nieuwe reactie</div>
@@ -62,8 +69,10 @@ interface PinComment {
             <div class="pin-form-actions">
               <button class="pin-btn-cancel" (click)="cancelPin()">Annuleren</button>
               <button class="pin-btn-confirm"
-                      [disabled]="!newName.trim()"
-                      (click)="confirmPin()">Plaatsen</button>
+                      [disabled]="!newName.trim() || saving"
+                      (click)="confirmPin()">
+                {{ saving ? 'Bezig...' : 'Plaatsen' }}
+              </button>
             </div>
           </div>
         </div>
@@ -109,7 +118,6 @@ interface PinComment {
       cursor: crosshair;
     }
 
-    /* ── Pin ── */
     .pin {
       position: absolute;
       transform: translate(-50%, -50%);
@@ -139,7 +147,6 @@ interface PinComment {
 
     .pin:hover .pin-dot { transform: scale(1.1); }
 
-    /* ── Tooltip card (verschijnt rechts van pin) ── */
     .pin-card {
       position: absolute;
       left: calc(100% + 10px);
@@ -163,7 +170,6 @@ interface PinComment {
 
     .pin:hover .pin-card { opacity: 1; visibility: visible; }
 
-    /* Kaart links tonen wanneer pin dicht bij rechterrand zit */
     .pin.flip-left .pin-card {
       left: auto;
       right: calc(100% + 10px);
@@ -207,7 +213,6 @@ interface PinComment {
     .pin-delete svg { fill: currentColor; }
     .pin-delete:hover { color: #E10036; background: #FFF5F5; }
 
-    /* ── Formulier voor nieuwe pin ── */
     .pin-form-wrap {
       position: absolute;
       transform: translate(-50%, calc(-100% - 12px));
@@ -288,7 +293,6 @@ interface PinComment {
     .pin-btn-confirm:hover:not(:disabled) { background: #0691D3; }
     .pin-btn-confirm:disabled { opacity: 0.5; cursor: not-allowed; }
 
-    /* ── FAB knop ── */
     .comment-fab {
       position: fixed;
       bottom: 24px;
@@ -312,7 +316,6 @@ interface PinComment {
     }
 
     .comment-fab:hover { box-shadow: 0 6px 20px rgba(0,0,0,0.15); border-color: #B9C7D0; }
-
     .comment-fab.active { background: #FFF5F5; border-color: #FFBCCC; color: #E10036; }
 
     .fab-count {
@@ -329,33 +332,48 @@ interface PinComment {
     }
   `]
 })
-export class CommentOverlayComponent implements OnInit {
+export class CommentOverlayComponent implements OnInit, OnDestroy {
   @Input() pageId = '';
 
-  pins: PinComment[] = [];
+  pins: Pin[] = [];
   isAdding = false;
-  pendingPin: { xPct: number; yPct: number } | null = null;
+  pendingPin: { x_pct: number; y_pct: number } | null = null;
   newName = '';
   newText = '';
+  saving = false;
 
-  private readonly STORAGE_KEY = 'dv_comments';
+  private channel: RealtimeChannel | null = null;
   private cdRef = inject(ChangeDetectorRef);
 
-  ngOnInit(): void { this.load(); }
-
-  private load(): void {
-    try {
-      const all: Record<string, PinComment[]> = JSON.parse(localStorage.getItem(this.STORAGE_KEY) ?? '{}');
-      this.pins = all[this.pageId] ?? [];
-    } catch { this.pins = []; }
+  ngOnInit(): void {
+    this.loadPins();
+    this.subscribeRealtime();
   }
 
-  private save(): void {
-    try {
-      const all: Record<string, PinComment[]> = JSON.parse(localStorage.getItem(this.STORAGE_KEY) ?? '{}');
-      all[this.pageId] = this.pins;
-      localStorage.setItem(this.STORAGE_KEY, JSON.stringify(all));
-    } catch {}
+  ngOnDestroy(): void {
+    if (this.channel) supabase.removeChannel(this.channel);
+  }
+
+  private async loadPins(): Promise<void> {
+    const { data } = await supabase
+      .from('pins')
+      .select('*')
+      .eq('page_id', this.pageId)
+      .order('created_at');
+    this.pins = data ?? [];
+    this.cdRef.detectChanges();
+  }
+
+  private subscribeRealtime(): void {
+    this.channel = supabase
+      .channel(`pins-${this.pageId}`)
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'pins',
+        filter: `page_id=eq.${this.pageId}`
+      }, () => this.loadPins())
+      .subscribe();
   }
 
   pinColor(name: string): string {
@@ -377,9 +395,10 @@ export class CommentOverlayComponent implements OnInit {
     if (!this.isAdding || this.pendingPin) return;
     const layer = event.currentTarget as HTMLElement;
     const rect = layer.getBoundingClientRect();
-    const xPct = ((event.clientX - rect.left) / layer.offsetWidth) * 100;
-    const yPct = ((event.clientY - rect.top) / layer.offsetHeight) * 100;
-    this.pendingPin = { xPct, yPct };
+    this.pendingPin = {
+      x_pct: ((event.clientX - rect.left) / layer.offsetWidth) * 100,
+      y_pct: ((event.clientY - rect.top) / layer.offsetHeight) * 100,
+    };
     this.newName = '';
     this.newText = '';
   }
@@ -389,28 +408,30 @@ export class CommentOverlayComponent implements OnInit {
     this.isAdding = false;
   }
 
-  confirmPin(): void {
-    if (!this.newName.trim() || !this.pendingPin) return;
-    const pin: PinComment = {
+  async confirmPin(): Promise<void> {
+    if (!this.newName.trim() || !this.pendingPin || this.saving) return;
+    this.saving = true;
+    await supabase.from('pins').insert({
       id: Date.now().toString(36) + Math.random().toString(36).slice(2, 5),
-      xPct: this.pendingPin.xPct,
-      yPct: this.pendingPin.yPct,
+      page_id: this.pageId,
+      x_pct: this.pendingPin.x_pct,
+      y_pct: this.pendingPin.y_pct,
       name: this.newName.trim(),
       text: this.newText.trim(),
-    };
-    this.pins = [...this.pins, pin];
-    this.save();
+    });
+    this.saving = false;
     this.pendingPin = null;
     this.isAdding = false;
+    this.newName = '';
+    this.newText = '';
   }
 
-  deletePin(id: string, event: MouseEvent): void {
+  async deletePin(id: string, event: MouseEvent): Promise<void> {
     event.stopPropagation();
-    this.pins = this.pins.filter(p => p.id !== id);
-    this.save();
+    await supabase.from('pins').delete().eq('id', id);
   }
 
-  startDrag(event: MouseEvent, pin: PinComment): void {
+  startDrag(event: MouseEvent, pin: Pin): void {
     event.preventDefault();
     event.stopPropagation();
 
@@ -419,21 +440,23 @@ export class CommentOverlayComponent implements OnInit {
     const layerH = layer.offsetHeight;
     const startX = event.clientX;
     const startY = event.clientY;
-    const startXPct = pin.xPct;
-    const startYPct = pin.yPct;
+    const startXPct = pin.x_pct;
+    const startYPct = pin.y_pct;
     let moved = false;
 
     const onMove = (e: MouseEvent) => {
       moved = true;
-      pin.xPct = Math.max(2, Math.min(98, startXPct + (e.clientX - startX) / layerW * 100));
-      pin.yPct = Math.max(1, Math.min(99, startYPct + (e.clientY - startY) / layerH * 100));
+      pin.x_pct = Math.max(2, Math.min(98, startXPct + (e.clientX - startX) / layerW * 100));
+      pin.y_pct = Math.max(1, Math.min(99, startYPct + (e.clientY - startY) / layerH * 100));
       this.cdRef.detectChanges();
     };
 
-    const onUp = () => {
+    const onUp = async () => {
       document.removeEventListener('mousemove', onMove);
       document.removeEventListener('mouseup', onUp);
-      if (moved) this.save();
+      if (moved) {
+        await supabase.from('pins').update({ x_pct: pin.x_pct, y_pct: pin.y_pct }).eq('id', pin.id);
+      }
     };
 
     document.addEventListener('mousemove', onMove);
