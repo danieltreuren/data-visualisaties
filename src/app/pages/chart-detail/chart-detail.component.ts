@@ -1,8 +1,9 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, inject, effect } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { NgxEchartsDirective } from 'ngx-echarts';
 import type { EChartsOption } from 'echarts';
 import { CommentOverlayComponent } from '../../shared/comment-overlay.component';
+import { PaletteService } from '../../shared/palette.service';
 
 interface ChartInfo {
   dutchName: string; englishName: string; category: string;
@@ -11,7 +12,6 @@ interface ChartInfo {
   variants: string[]; accessibilityNotes: string[];
 }
 
-const C = ['#2C7BB6','#E07B00','#7B61E0','#00897B','#F5A623','#D63D6E','#566A78'];
 
 const AXIS_STYLE = {
   axisLine:  { lineStyle: { color: '#D0DCE4' } },
@@ -357,9 +357,16 @@ export class ChartDetailComponent implements OnInit {
   categoryCount = 3;
   readonly catOptions = [1,2,3,4,5,6,7];
 
+  private paletteService = inject(PaletteService);
+
   get supportsCategories(): boolean { return SUPPORTS_CAT.has(this.chartType); }
 
-  constructor(private route: ActivatedRoute) {}
+  constructor(private route: ActivatedRoute) {
+    effect(() => {
+      this.paletteService.colors();
+      if (this.chartType) this.buildCharts();
+    });
+  }
 
   ngOnInit(): void {
     this.chartType = this.route.snapshot.paramMap.get('type') ?? '';
@@ -373,7 +380,8 @@ export class ChartDetailComponent implements OnInit {
   }
 
   private buildCharts(): void {
-    const n       = this.categoryCount;
+    const C = this.paletteService.colors();
+    const n = this.categoryCount;
     const tooltip = { trigger: 'axis' as const, axisPointer: { type: 'shadow' as const } };
     const legend  = { bottom: 0, textStyle: { color: '#566A78', fontSize: 11 } };
     const gridLeg = { left: 16, right: 16, top: 16, bottom: 40, containLabel: true };

@@ -1,10 +1,11 @@
 import { Component } from '@angular/core';
 import { RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
+import { PaletteSwitcherComponent } from './shared/palette-switcher.component';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [RouterOutlet, RouterLink, RouterLinkActive],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, PaletteSwitcherComponent],
   template: `
     <nav class="nav">
       <div class="nav-inner">
@@ -13,6 +14,7 @@ import { RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
           Data Visualisaties
         </a>
         <span class="nav-tag">Design Principles & Kennisbibliotheek</span>
+        <app-palette-switcher></app-palette-switcher>
       </div>
     </nav>
     <router-outlet />
@@ -37,6 +39,7 @@ import { RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
       align-items: center;
       gap: 1rem;
     }
+    app-palette-switcher { margin-left: auto; }
     .nav-brand {
       display: flex;
       align-items: center;
