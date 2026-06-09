@@ -119,7 +119,7 @@ const FALLBACK: ChartInfo = {
       <app-comment-overlay [pageId]="chartType"></app-comment-overlay>
       <div class="container">
 
-        <a class="back-link" routerLink="/">← Terug naar overzicht</a>
+        <a class="back-link" routerLink="/" fragment="grafiektypen">← Terug naar overzicht</a>
 
         <header class="detail-header">
           <span class="chart-category">{{ chart.category }}</span>

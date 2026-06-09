@@ -163,7 +163,7 @@ interface ChartCard { type: string; dutchName: string; englishName: string; desc
       </section>
 
       <!-- ── Grafiektypen ── -->
-      <section class="section bg-grey">
+      <section id="grafiektypen" class="section bg-grey">
         <div class="container">
           <div class="section-label">Grafiektypen</div>
           <h2>9 veelgebruikte visualisaties</h2>
