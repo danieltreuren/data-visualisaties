@@ -3,6 +3,7 @@ import { RouterLink } from '@angular/router';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { CommentOverlayComponent } from '../../shared/comment-overlay.component';
 import { PaletteService } from '../../shared/palette.service';
+import { PalettePollComponent } from '../../shared/palette-poll.component';
 
 interface Swatch { name: string; hex: string; role?: string; light?: boolean; }
 interface ChartCard { type: string; dutchName: string; englishName: string; description: string; svgPreview: string; }
@@ -10,7 +11,7 @@ interface ChartCard { type: string; dutchName: string; englishName: string; desc
 @Component({
   selector: 'app-home',
   standalone: true,
-  imports: [RouterLink, CommentOverlayComponent],
+  imports: [RouterLink, CommentOverlayComponent, PalettePollComponent],
   template: `
     <div class="page">
       <app-comment-overlay pageId="home"></app-comment-overlay>
@@ -128,6 +129,8 @@ interface ChartCard { type: string; dutchName: string; englishName: string; desc
               </div>
             }
           </div>
+
+          <app-palette-poll></app-palette-poll>
 
           <div class="cb-note">
             <span class="cb-icon">♿</span>
