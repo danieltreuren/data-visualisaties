@@ -1,7 +1,8 @@
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { CommentOverlayComponent } from '../../shared/comment-overlay.component';
+import { PaletteService } from '../../shared/palette.service';
 
 interface Swatch { name: string; hex: string; role?: string; light?: boolean; }
 interface ChartCard { type: string; dutchName: string; englishName: string; description: string; svgPreview: string; }
@@ -110,18 +111,12 @@ interface ChartCard { type: string; dutchName: string; englishName: string; desc
           <h2>Kleur als communicatiemiddel</h2>
           <p class="section-intro">
             Twee paletten: een <strong>categorisch palet</strong> voor het onderscheiden van data-series,
-            en een <strong>semantisch palet</strong> voor status en betekenis. Beide zijn geoptimaliseerd
-            voor WCAG AA-contrast en veilig bij de meest voorkomende vormen van kleurenblindheid (deuteranopie).
+            en een <strong>semantisch palet</strong> voor status en betekenis.
+            Gebruik de palet-schakelaar rechtsboven om te vergelijken — swatches en previews passen zich direct aan.
           </p>
 
-          <h3 class="palette-title">Categorisch palet — data-series</h3>
-          <p class="palette-note">
-            7 kleuren voor het onderscheiden van data-series. De merkkleur (#009BE5) is bewust
-            <strong>niet</strong> opgenomen: die zit al in navigatie, knoppen en links. Door
-            merk- en datakleuren te scheiden, ziet de gebruiker in één oogopslag wat interface
-            is en wat data. Het palet is gebaseerd op het Okabe-Ito principe: onderscheidbaar
-            voor de meest voorkomende vormen van kleurenblindheid.
-          </p>
+          <h3 class="palette-title">Categorisch palet — {{ activePalette.name }}</h3>
+          <p class="palette-note">{{ activePalette.description }}</p>
           <div class="swatches-row">
             @for (s of categoricalSwatches; track s.hex) {
               <div class="swatch" [style.background]="s.hex">
@@ -135,10 +130,10 @@ interface ChartCard { type: string; dutchName: string; englishName: string; desc
           </div>
 
           <div class="cb-note">
-            <span class="cb-icon">👁</span>
+            <span class="cb-icon">♿</span>
             <span>
-              <strong>Kleurenblindheid:</strong> Dit palet is gevalideerd voor deuteranopie (rood-groen, ~6% mannen),
-              protanopie en tritanopie. Gebruik daarnaast altijd labels, patronen of vormen als tweede encoding.
+              <strong>WCAG &amp; kleurenblindheid:</strong> {{ activePalette.wcagNote }}
+              Gebruik daarnaast altijd labels, patronen of vormen als tweede encoding.
             </span>
           </div>
 
@@ -516,10 +511,155 @@ interface ChartCard { type: string; dutchName: string; englishName: string; desc
 })
 export class HomeComponent {
 
+  private paletteService = inject(PaletteService);
+
   constructor(private sanitizer: DomSanitizer) {}
 
   trust(svg: string): SafeHtml {
     return this.sanitizer.bypassSecurityTrustHtml(svg);
+  }
+
+  get activePalette() { return this.paletteService.activePalette(); }
+
+  get categoricalSwatches(): Swatch[] {
+    const p = this.paletteService.activePalette();
+    return p.swatches.map((s, i) => ({ name: s.name, hex: p.colors[i], role: s.role }));
+  }
+
+  get chartCards(): ChartCard[] {
+    const C = this.paletteService.colors();
+    return [
+      {
+        type: 'staafdiagram', dutchName: 'Staafdiagram', englishName: 'Bar Chart',
+        description: 'Vergelijk categorieën op basis van een numerieke waarde.',
+        svgPreview: `<svg viewBox="0 0 110 75" xmlns="http://www.w3.org/2000/svg">
+          <rect x="5"  y="45" width="16" height="26" rx="2" fill="${C[0]}"/>
+          <rect x="25" y="28" width="16" height="43" rx="2" fill="${C[0]}"/>
+          <rect x="45" y="18" width="16" height="53" rx="2" fill="${C[0]}"/>
+          <rect x="65" y="33" width="16" height="38" rx="2" fill="${C[0]}" opacity="0.3"/>
+          <rect x="85" y="22" width="16" height="49" rx="2" fill="${C[0]}" opacity="0.3"/>
+          <line x1="5" y1="71" x2="105" y2="71" stroke="#D0DCE4" stroke-width="1"/>
+        </svg>`
+      },
+      {
+        type: 'gestapeld-staafdiagram', dutchName: 'Gestapeld staafdiagram', englishName: 'Stacked Bar Chart',
+        description: 'Toon samenstelling én totaal per categorie.',
+        svgPreview: `<svg viewBox="0 0 110 75" xmlns="http://www.w3.org/2000/svg">
+          <rect x="8"  y="38" width="18" height="33" rx="2" fill="${C[0]}"/>
+          <rect x="8"  y="22" width="18" height="16" rx="2" fill="${C[1]}"/>
+          <rect x="8"  y="12" width="18" height="10" rx="2" fill="${C[2]}"/>
+          <rect x="32" y="30" width="18" height="41" rx="2" fill="${C[0]}"/>
+          <rect x="32" y="16" width="18" height="14" rx="2" fill="${C[1]}"/>
+          <rect x="56" y="35" width="18" height="36" rx="2" fill="${C[0]}"/>
+          <rect x="56" y="22" width="18" height="13" rx="2" fill="${C[1]}"/>
+          <rect x="56" y="14" width="18" height="8"  rx="2" fill="${C[2]}"/>
+          <rect x="80" y="40" width="18" height="31" rx="2" fill="${C[0]}"/>
+          <rect x="80" y="28" width="18" height="12" rx="2" fill="${C[1]}"/>
+          <line x1="5" y1="71" x2="105" y2="71" stroke="#D0DCE4" stroke-width="1"/>
+        </svg>`
+      },
+      {
+        type: 'lijndiagram', dutchName: 'Lijndiagram', englishName: 'Line Chart',
+        description: 'Visualiseer trends en verloop over tijd.',
+        svgPreview: `<svg viewBox="0 0 110 75" xmlns="http://www.w3.org/2000/svg">
+          <polyline points="8,55 28,35 48,42 68,20 88,28 105,15"
+            fill="none" stroke="${C[0]}" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+          <circle cx="8"   cy="55" r="3" fill="${C[0]}"/>
+          <circle cx="28"  cy="35" r="3" fill="${C[0]}"/>
+          <circle cx="48"  cy="42" r="3" fill="${C[0]}"/>
+          <circle cx="68"  cy="20" r="3" fill="${C[0]}"/>
+          <circle cx="88"  cy="28" r="3" fill="${C[0]}"/>
+          <circle cx="105" cy="15" r="3" fill="${C[0]}"/>
+          <line x1="5" y1="71" x2="108" y2="71" stroke="#D0DCE4" stroke-width="1"/>
+        </svg>`
+      },
+      {
+        type: 'cirkeldiagram', dutchName: 'Cirkeldiagram / Donut', englishName: 'Pie / Donut Chart',
+        description: 'Laat verhoudingen zien binnen een geheel.',
+        svgPreview: `<svg viewBox="0 0 110 75" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="55" cy="37" r="28" fill="none" stroke="${C[0]}" stroke-width="12" stroke-dasharray="88 88"  stroke-dashoffset="0"/>
+          <circle cx="55" cy="37" r="28" fill="none" stroke="${C[1]}" stroke-width="12" stroke-dasharray="44 132" stroke-dashoffset="-88"/>
+          <circle cx="55" cy="37" r="28" fill="none" stroke="${C[2]}" stroke-width="12" stroke-dasharray="44 132" stroke-dashoffset="-132"/>
+          <circle cx="55" cy="37" r="16" fill="#F0F8FF"/>
+        </svg>`
+      },
+      {
+        type: 'spreidingsdiagram', dutchName: 'Spreidingsdiagram', englishName: 'Scatter Plot',
+        description: 'Ontdek correlaties tussen twee variabelen.',
+        svgPreview: `<svg viewBox="0 0 110 75" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="18" cy="58" r="3.5" fill="${C[0]}" opacity=".8"/>
+          <circle cx="28" cy="48" r="3.5" fill="${C[0]}" opacity=".8"/>
+          <circle cx="35" cy="55" r="3.5" fill="${C[0]}" opacity=".8"/>
+          <circle cx="45" cy="40" r="3.5" fill="${C[0]}" opacity=".8"/>
+          <circle cx="52" cy="45" r="3.5" fill="${C[0]}" opacity=".8"/>
+          <circle cx="60" cy="30" r="3.5" fill="${C[0]}" opacity=".8"/>
+          <circle cx="70" cy="35" r="3.5" fill="${C[0]}" opacity=".8"/>
+          <circle cx="78" cy="22" r="3.5" fill="${C[1]}" opacity=".9"/>
+          <circle cx="88" cy="25" r="3.5" fill="${C[1]}" opacity=".9"/>
+          <circle cx="98" cy="15" r="3.5" fill="${C[1]}" opacity=".9"/>
+          <line x1="8" y1="71" x2="108" y2="71" stroke="#D0DCE4" stroke-width="1"/>
+          <line x1="8" y1="71" x2="8"   y2="8"  stroke="#D0DCE4" stroke-width="1"/>
+        </svg>`
+      },
+      {
+        type: 'vlakdiagram', dutchName: 'Vlakdiagram', englishName: 'Area Chart',
+        description: 'Benadruk volume en cumulatieve trends over tijd.',
+        svgPreview: `<svg viewBox="0 0 110 75" xmlns="http://www.w3.org/2000/svg">
+          <path d="M8,60 L25,42 L45,50 L65,28 L85,35 L105,18 L105,71 L8,71 Z"
+            fill="${C[0]}" opacity="0.2"/>
+          <polyline points="8,60 25,42 45,50 65,28 85,35 105,18"
+            fill="none" stroke="${C[0]}" stroke-width="2" stroke-linejoin="round"/>
+          <line x1="5" y1="71" x2="108" y2="71" stroke="#D0DCE4" stroke-width="1"/>
+        </svg>`
+      },
+      {
+        type: 'heatmap', dutchName: 'Heatmap', englishName: 'Heatmap',
+        description: 'Toon intensiteit via kleurgradiënt in een matrix.',
+        svgPreview: `<svg viewBox="0 0 110 75" xmlns="http://www.w3.org/2000/svg">
+          <rect x="8"  y="8"  width="18" height="14" rx="2" fill="#EAF8FF"/>
+          <rect x="30" y="8"  width="18" height="14" rx="2" fill="#69CFFF"/>
+          <rect x="52" y="8"  width="18" height="14" rx="2" fill="#2C7BB6"/>
+          <rect x="74" y="8"  width="18" height="14" rx="2" fill="#0691D3"/>
+          <rect x="96" y="8"  width="12" height="14" rx="2" fill="#063EAF"/>
+          <rect x="8"  y="26" width="18" height="14" rx="2" fill="#69CFFF"/>
+          <rect x="30" y="26" width="18" height="14" rx="2" fill="#2C7BB6"/>
+          <rect x="52" y="26" width="18" height="14" rx="2" fill="#B4E7FF"/>
+          <rect x="74" y="26" width="18" height="14" rx="2" fill="#0691D3"/>
+          <rect x="96" y="26" width="12" height="14" rx="2" fill="#2C7BB6"/>
+          <rect x="8"  y="44" width="18" height="14" rx="2" fill="#2C7BB6"/>
+          <rect x="30" y="44" width="18" height="14" rx="2" fill="#EAF8FF"/>
+          <rect x="52" y="44" width="18" height="14" rx="2" fill="#0691D3"/>
+          <rect x="74" y="44" width="18" height="14" rx="2" fill="#B4E7FF"/>
+          <rect x="96" y="44" width="12" height="14" rx="2" fill="#63CFFF"/>
+          <rect x="8"  y="62" width="18" height="10" rx="2" fill="#B4E7FF"/>
+          <rect x="30" y="62" width="18" height="10" rx="2" fill="#063EAF"/>
+          <rect x="52" y="62" width="18" height="10" rx="2" fill="#2C7BB6"/>
+          <rect x="74" y="62" width="18" height="10" rx="2" fill="#EAF8FF"/>
+          <rect x="96" y="62" width="12" height="10" rx="2" fill="#0691D3"/>
+        </svg>`
+      },
+      {
+        type: 'treemap', dutchName: 'Treemap', englishName: 'Treemap',
+        description: 'Visualiseer hiërarchische data als geneste rechthoeken.',
+        svgPreview: `<svg viewBox="0 0 110 75" xmlns="http://www.w3.org/2000/svg">
+          <rect x="5"  y="5"  width="52" height="65" rx="3" fill="${C[0]}" opacity=".85"/>
+          <rect x="61" y="5"  width="44" height="38" rx="3" fill="${C[1]}" opacity=".85"/>
+          <rect x="61" y="47" width="22" height="23" rx="3" fill="${C[2]}" opacity=".85"/>
+          <rect x="87" y="47" width="18" height="23" rx="3" fill="${C[3]}" opacity=".85"/>
+        </svg>`
+      },
+      {
+        type: 'kpi-meter', dutchName: 'KPI / Meter', englishName: 'Gauge',
+        description: 'Toon een enkelvoudige waarde ten opzichte van een doel.',
+        svgPreview: `<svg viewBox="0 0 110 75" xmlns="http://www.w3.org/2000/svg">
+          <path d="M15,65 A40,40 0 0,1 95,65" fill="none" stroke="#D0DCE4" stroke-width="10" stroke-linecap="round"/>
+          <path d="M15,65 A40,40 0 0,1 72,30" fill="none" stroke="${C[0]}" stroke-width="10" stroke-linecap="round"/>
+          <line x1="55" y1="65" x2="72" y2="30" stroke="#1A2B3C" stroke-width="2.5" stroke-linecap="round"/>
+          <circle cx="55" cy="65" r="5" fill="#1A2B3C"/>
+          <text x="55" y="58" text-anchor="middle" font-size="10" font-weight="700" fill="${C[0]}">72%</text>
+        </svg>`
+      },
+    ];
   }
 
   principles = [
@@ -561,16 +701,6 @@ export class HomeComponent {
     },
   ];
 
-  categoricalSwatches: Swatch[] = [
-    { name: 'Datablauw', hex: '#2C7BB6', role: 'Data-primair · ≠ merkkleur #009BE5' },
-    { name: 'Amber',     hex: '#E07B00', role: 'Warm · CB-veilig naast blauw' },
-    { name: 'Paars',     hex: '#7B61E0', role: 'Onderscheidend' },
-    { name: 'Teal',      hex: '#00897B', role: 'Koel-groen · deuteranopie-veilig' },
-    { name: 'Goud',      hex: '#F5A623', role: 'Geel-warm · distinct van amber' },
-    { name: 'Roze',      hex: '#D63D6E', role: 'Magenta-richting · CB-veilig' },
-    { name: 'Leisteen',  hex: '#566A78', role: 'Neutraal · DS Grey 900' },
-  ];
-
   semanticSwatches: Swatch[] = [
     { name: 'Succes',       hex: '#02C539', role: 'DS Green 700 · positief resultaat' },
     { name: 'Waarschuwing', hex: '#EF8100', role: 'DS Orange 600 · let op' },
@@ -579,136 +709,4 @@ export class HomeComponent {
     { name: 'Neutraal',     hex: '#9FB1BD', role: 'DS Grey 600 · onbeoordeeld' },
   ];
 
-  chartCards: ChartCard[] = [
-    {
-      type: 'staafdiagram', dutchName: 'Staafdiagram', englishName: 'Bar Chart',
-      description: 'Vergelijk categorieën op basis van een numerieke waarde.',
-      svgPreview: `<svg viewBox="0 0 110 75" xmlns="http://www.w3.org/2000/svg">
-        <rect x="5"  y="45" width="16" height="26" rx="2" fill="#2C7BB6"/>
-        <rect x="25" y="28" width="16" height="43" rx="2" fill="#2C7BB6"/>
-        <rect x="45" y="18" width="16" height="53" rx="2" fill="#2C7BB6"/>
-        <rect x="65" y="33" width="16" height="38" rx="2" fill="#B4E7FF"/>
-        <rect x="85" y="22" width="16" height="49" rx="2" fill="#B4E7FF"/>
-        <line x1="5" y1="71" x2="105" y2="71" stroke="#D0DCE4" stroke-width="1"/>
-      </svg>`
-    },
-    {
-      type: 'gestapeld-staafdiagram', dutchName: 'Gestapeld staafdiagram', englishName: 'Stacked Bar Chart',
-      description: 'Toon samenstelling én totaal per categorie.',
-      svgPreview: `<svg viewBox="0 0 110 75" xmlns="http://www.w3.org/2000/svg">
-        <rect x="8"  y="38" width="18" height="33" rx="2" fill="#2C7BB6"/>
-        <rect x="8"  y="22" width="18" height="16" rx="2" fill="#E07B00"/>
-        <rect x="8"  y="12" width="18" height="10" rx="2" fill="#7B61E0"/>
-        <rect x="32" y="30" width="18" height="41" rx="2" fill="#2C7BB6"/>
-        <rect x="32" y="16" width="18" height="14" rx="2" fill="#E07B00"/>
-        <rect x="56" y="35" width="18" height="36" rx="2" fill="#2C7BB6"/>
-        <rect x="56" y="22" width="18" height="13" rx="2" fill="#E07B00"/>
-        <rect x="56" y="14" width="18" height="8"  rx="2" fill="#7B61E0"/>
-        <rect x="80" y="40" width="18" height="31" rx="2" fill="#2C7BB6"/>
-        <rect x="80" y="28" width="18" height="12" rx="2" fill="#E07B00"/>
-        <line x1="5" y1="71" x2="105" y2="71" stroke="#D0DCE4" stroke-width="1"/>
-      </svg>`
-    },
-    {
-      type: 'lijndiagram', dutchName: 'Lijndiagram', englishName: 'Line Chart',
-      description: 'Visualiseer trends en verloop over tijd.',
-      svgPreview: `<svg viewBox="0 0 110 75" xmlns="http://www.w3.org/2000/svg">
-        <polyline points="8,55 28,35 48,42 68,20 88,28 105,15"
-          fill="none" stroke="#2C7BB6" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
-        <circle cx="8"  cy="55" r="3" fill="#2C7BB6"/>
-        <circle cx="28" cy="35" r="3" fill="#2C7BB6"/>
-        <circle cx="48" cy="42" r="3" fill="#2C7BB6"/>
-        <circle cx="68" cy="20" r="3" fill="#2C7BB6"/>
-        <circle cx="88" cy="28" r="3" fill="#2C7BB6"/>
-        <circle cx="105" cy="15" r="3" fill="#2C7BB6"/>
-        <line x1="5" y1="71" x2="108" y2="71" stroke="#D0DCE4" stroke-width="1"/>
-      </svg>`
-    },
-    {
-      type: 'cirkeldiagram', dutchName: 'Cirkeldiagram / Donut', englishName: 'Pie / Donut Chart',
-      description: 'Laat verhoudingen zien binnen een geheel.',
-      svgPreview: `<svg viewBox="0 0 110 75" xmlns="http://www.w3.org/2000/svg">
-        <circle cx="55" cy="37" r="28" fill="none" stroke="#2C7BB6" stroke-width="12" stroke-dasharray="88 88" stroke-dashoffset="0"/>
-        <circle cx="55" cy="37" r="28" fill="none" stroke="#E07B00" stroke-width="12" stroke-dasharray="44 132" stroke-dashoffset="-88"/>
-        <circle cx="55" cy="37" r="28" fill="none" stroke="#7B61E0" stroke-width="12" stroke-dasharray="44 132" stroke-dashoffset="-132"/>
-        <circle cx="55" cy="37" r="16" fill="#F0F8FF"/>
-      </svg>`
-    },
-    {
-      type: 'spreidingsdiagram', dutchName: 'Spreidingsdiagram', englishName: 'Scatter Plot',
-      description: 'Ontdek correlaties tussen twee variabelen.',
-      svgPreview: `<svg viewBox="0 0 110 75" xmlns="http://www.w3.org/2000/svg">
-        <circle cx="18" cy="58" r="3.5" fill="#2C7BB6" opacity=".8"/>
-        <circle cx="28" cy="48" r="3.5" fill="#2C7BB6" opacity=".8"/>
-        <circle cx="35" cy="55" r="3.5" fill="#2C7BB6" opacity=".8"/>
-        <circle cx="45" cy="40" r="3.5" fill="#2C7BB6" opacity=".8"/>
-        <circle cx="52" cy="45" r="3.5" fill="#2C7BB6" opacity=".8"/>
-        <circle cx="60" cy="30" r="3.5" fill="#2C7BB6" opacity=".8"/>
-        <circle cx="70" cy="35" r="3.5" fill="#2C7BB6" opacity=".8"/>
-        <circle cx="78" cy="22" r="3.5" fill="#E07B00" opacity=".9"/>
-        <circle cx="88" cy="25" r="3.5" fill="#E07B00" opacity=".9"/>
-        <circle cx="98" cy="15" r="3.5" fill="#E07B00" opacity=".9"/>
-        <line x1="8" y1="71" x2="108" y2="71" stroke="#D0DCE4" stroke-width="1"/>
-        <line x1="8" y1="71" x2="8"   y2="8"  stroke="#D0DCE4" stroke-width="1"/>
-      </svg>`
-    },
-    {
-      type: 'vlakdiagram', dutchName: 'Vlakdiagram', englishName: 'Area Chart',
-      description: 'Benadruk volume en cumulatieve trends over tijd.',
-      svgPreview: `<svg viewBox="0 0 110 75" xmlns="http://www.w3.org/2000/svg">
-        <path d="M8,60 L25,42 L45,50 L65,28 L85,35 L105,18 L105,71 L8,71 Z"
-          fill="#B4E7FF" opacity=".7"/>
-        <polyline points="8,60 25,42 45,50 65,28 85,35 105,18"
-          fill="none" stroke="#2C7BB6" stroke-width="2" stroke-linejoin="round"/>
-        <line x1="5" y1="71" x2="108" y2="71" stroke="#D0DCE4" stroke-width="1"/>
-      </svg>`
-    },
-    {
-      type: 'heatmap', dutchName: 'Heatmap', englishName: 'Heatmap',
-      description: 'Toon intensiteit via kleurgradiënt in een matrix.',
-      svgPreview: `<svg viewBox="0 0 110 75" xmlns="http://www.w3.org/2000/svg">
-        <rect x="8"  y="8"  width="18" height="14" rx="2" fill="#EAF8FF"/>
-        <rect x="30" y="8"  width="18" height="14" rx="2" fill="#69CFFF"/>
-        <rect x="52" y="8"  width="18" height="14" rx="2" fill="#2C7BB6"/>
-        <rect x="74" y="8"  width="18" height="14" rx="2" fill="#0691D3"/>
-        <rect x="96" y="8"  width="12" height="14" rx="2" fill="#063EAF"/>
-        <rect x="8"  y="26" width="18" height="14" rx="2" fill="#69CFFF"/>
-        <rect x="30" y="26" width="18" height="14" rx="2" fill="#2C7BB6"/>
-        <rect x="52" y="26" width="18" height="14" rx="2" fill="#B4E7FF"/>
-        <rect x="74" y="26" width="18" height="14" rx="2" fill="#0691D3"/>
-        <rect x="96" y="26" width="12" height="14" rx="2" fill="#2C7BB6"/>
-        <rect x="8"  y="44" width="18" height="14" rx="2" fill="#2C7BB6"/>
-        <rect x="30" y="44" width="18" height="14" rx="2" fill="#EAF8FF"/>
-        <rect x="52" y="44" width="18" height="14" rx="2" fill="#0691D3"/>
-        <rect x="74" y="44" width="18" height="14" rx="2" fill="#B4E7FF"/>
-        <rect x="96" y="44" width="12" height="14" rx="2" fill="#63CFFF"/>
-        <rect x="8"  y="62" width="18" height="10" rx="2" fill="#B4E7FF"/>
-        <rect x="30" y="62" width="18" height="10" rx="2" fill="#063EAF"/>
-        <rect x="52" y="62" width="18" height="10" rx="2" fill="#2C7BB6"/>
-        <rect x="74" y="62" width="18" height="10" rx="2" fill="#EAF8FF"/>
-        <rect x="96" y="62" width="12" height="10" rx="2" fill="#0691D3"/>
-      </svg>`
-    },
-    {
-      type: 'treemap', dutchName: 'Treemap', englishName: 'Treemap',
-      description: 'Visualiseer hiërarchische data als geneste rechthoeken.',
-      svgPreview: `<svg viewBox="0 0 110 75" xmlns="http://www.w3.org/2000/svg">
-        <rect x="5"  y="5"  width="52" height="65" rx="3" fill="#2C7BB6" opacity=".85"/>
-        <rect x="61" y="5"  width="44" height="38" rx="3" fill="#E07B00" opacity=".85"/>
-        <rect x="61" y="47" width="22" height="23" rx="3" fill="#7B61E0" opacity=".85"/>
-        <rect x="87" y="47" width="18" height="23" rx="3" fill="#00897B" opacity=".85"/>
-      </svg>`
-    },
-    {
-      type: 'kpi-meter', dutchName: 'KPI / Meter', englishName: 'Gauge',
-      description: 'Toon een enkelvoudige waarde ten opzichte van een doel.',
-      svgPreview: `<svg viewBox="0 0 110 75" xmlns="http://www.w3.org/2000/svg">
-        <path d="M15,65 A40,40 0 0,1 95,65" fill="none" stroke="#D0DCE4" stroke-width="10" stroke-linecap="round"/>
-        <path d="M15,65 A40,40 0 0,1 72,30" fill="none" stroke="#2C7BB6" stroke-width="10" stroke-linecap="round"/>
-        <line x1="55" y1="65" x2="72" y2="30" stroke="#1A2B3C" stroke-width="2.5" stroke-linecap="round"/>
-        <circle cx="55" cy="65" r="5" fill="#1A2B3C"/>
-        <text x="55" y="58" text-anchor="middle" font-size="10" font-weight="700" fill="#2C7BB6">72%</text>
-      </svg>`
-    },
-  ];
 }
