@@ -384,7 +384,7 @@ export class ChartDetailComponent implements OnInit {
       xAxis: { type: 'category', data: CAT7.slice(0, n), ...AXIS_STYLE },
       yAxis: { type: 'value', ...SPLIT, axisLabel: { color: '#566A78', fontSize: 11 } },
       series: [{ type: 'bar', barMaxWidth: 52,
-        data: CAT7_TOTALS.slice(0, n).map((v, i) => ({ value: v, itemStyle: { color: C[i], borderRadius: [4,4,0,0] } })),
+        data: CAT7_TOTALS.slice(0, n).map((v) => ({ value: v, itemStyle: { color: C[0], borderRadius: [4,4,0,0] } })),
         label: { show: true, position: 'top', color: '#566A78', fontSize: 11 } }]
     };
     this.opts['barH'] = {
@@ -392,7 +392,7 @@ export class ChartDetailComponent implements OnInit {
       xAxis: { type: 'value', ...SPLIT, axisLabel: { color: '#566A78', fontSize: 11 } },
       yAxis: { type: 'category', data: DEPT7.slice(0, n).reverse(), ...AXIS_STYLE },
       series: [{ type: 'bar', barMaxWidth: 36,
-        data: DEPT7_DATA.slice(0, n).reverse().map((v, i, arr) => ({ value: v, itemStyle: { color: C[arr.length - 1 - i], borderRadius: [0,4,4,0] } })),
+        data: DEPT7_DATA.slice(0, n).reverse().map((v) => ({ value: v, itemStyle: { color: C[0], borderRadius: [0,4,4,0] } })),
         label: { show: true, position: 'right', color: '#566A78', fontSize: 11 } }]
     };
 
