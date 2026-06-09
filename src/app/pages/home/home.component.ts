@@ -408,6 +408,7 @@ interface ChartCard { type: string; dutchName: string; englishName: string; desc
       margin-top: 0.1rem;
     }
     .cb-note {
+      margin-top: 1.5rem;
       display: flex;
       align-items: flex-start;
       gap: 0.75rem;
