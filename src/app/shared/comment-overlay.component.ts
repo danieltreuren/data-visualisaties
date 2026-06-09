@@ -426,10 +426,11 @@ export class CommentOverlayComponent implements OnInit, OnDestroy {
     this.newText = '';
   }
 
-  async deletePin(id: string, event: MouseEvent): Promise<void> {
+  deletePin(id: string, event: MouseEvent): void {
     event.stopPropagation();
     this.pins = this.pins.filter(p => p.id !== id);
-    await supabase.from('pins').delete().eq('id', id);
+    this.cdRef.detectChanges();
+    supabase.from('pins').delete().eq('id', id);
   }
 
   startDrag(event: MouseEvent, pin: Pin): void {
