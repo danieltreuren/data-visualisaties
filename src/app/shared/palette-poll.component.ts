@@ -226,9 +226,14 @@ export class PalettePollComponent implements OnInit, OnDestroy {
   private cdRef = inject(ChangeDetectorRef);
   private channel: any;
   private customChannel: any;
+  private configChannel: any;
+  private pollVersion = 0;
 
-  ngOnInit(): void {
-    const stored = localStorage.getItem(VOTED_KEY);
+  private get storageKey(): string { return `${VOTED_KEY}-v${this.pollVersion}`; }
+
+  async ngOnInit(): Promise<void> {
+    await this.loadPollVersion();
+    const stored = localStorage.getItem(this.storageKey);
     if (stored !== null) this.votedKey = stored;
     this.loadVotes();
     this.loadCustomPalettes();
@@ -238,6 +243,7 @@ export class PalettePollComponent implements OnInit, OnDestroy {
   ngOnDestroy(): void {
     if (this.channel) supabase.removeChannel(this.channel);
     if (this.customChannel) supabase.removeChannel(this.customChannel);
+    if (this.configChannel) supabase.removeChannel(this.configChannel);
   }
 
   key(i: number): string { return String(i); }
@@ -303,7 +309,7 @@ export class PalettePollComponent implements OnInit, OnDestroy {
 
     if (!voteErr) {
       this.votedKey = data.id;
-      localStorage.setItem(VOTED_KEY, data.id);
+      localStorage.setItem(this.storageKey, data.id);
       this.showCustomForm = false;
       await Promise.all([this.loadVotes(), this.loadCustomPalettes()]);
     }
@@ -324,11 +330,16 @@ export class PalettePollComponent implements OnInit, OnDestroy {
     const { error } = await supabase.from('palette_votes').insert(payload as any);
     if (!error) {
       this.votedKey = this.selectedKey;
-      localStorage.setItem(VOTED_KEY, this.selectedKey);
+      localStorage.setItem(this.storageKey, this.selectedKey);
       await this.loadVotes();
     }
     this.loading = false;
     this.cdRef.detectChanges();
+  }
+
+  private async loadPollVersion(): Promise<void> {
+    const { data } = await supabase.from('poll_config').select('version').single();
+    if (data) this.pollVersion = data.version;
   }
 
   private async loadVotes(): Promise<void> {
@@ -368,6 +379,21 @@ export class PalettePollComponent implements OnInit, OnDestroy {
       .channel('custom-palettes-poll')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'custom_palettes' },
         () => this.loadCustomPalettes())
+      .subscribe();
+
+    this.configChannel = supabase
+      .channel('poll-config')
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'poll_config' }, async (payload: any) => {
+        const newVersion = payload.new?.version;
+        if (newVersion && newVersion !== this.pollVersion) {
+          this.pollVersion = newVersion;
+          this.votedKey = null;
+          this.selectedKey = null;
+          this.showCustomForm = false;
+          await Promise.all([this.loadVotes(), this.loadCustomPalettes()]);
+          this.cdRef.detectChanges();
+        }
+      })
       .subscribe();
   }
 }
