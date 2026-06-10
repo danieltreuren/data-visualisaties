@@ -334,6 +334,7 @@ export class CommentOverlayComponent implements OnInit, OnDestroy {
           const deletedId = (payload.old as { id?: string })?.id;
           if (deletedId) {
             this.pins = this.pins.filter(p => p.id !== deletedId);
+            this.fabSvc.setPinCount(this.pins.length);
             this.cdRef.detectChanges();
           }
         })
@@ -381,6 +382,7 @@ export class CommentOverlayComponent implements OnInit, OnDestroy {
   deletePin(id: string, event: MouseEvent): void {
     event.stopPropagation();
     this.pins = this.pins.filter(p => p.id !== id);
+    this.fabSvc.setPinCount(this.pins.length);
     this.cdRef.detectChanges();
     supabase.from('pins').delete().eq('id', id).then();
   }

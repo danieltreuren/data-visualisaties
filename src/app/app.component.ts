@@ -1,5 +1,7 @@
 import { Component, inject } from '@angular/core';
-import { RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
+import { RouterOutlet, RouterLink, RouterLinkActive, Router, NavigationEnd } from '@angular/router';
+import { filter, map } from 'rxjs/operators';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { PaletteSwitcherComponent } from './shared/palette-switcher.component';
 import { CommentFabService } from './shared/comment-fab.service';
 
@@ -24,6 +26,7 @@ import { CommentFabService } from './shared/comment-fab.service';
 
     <div class="pills-row">
       <app-palette-switcher></app-palette-switcher>
+      @if (showFab()) {
       <button class="comment-fab" [class.active]="fab.isAdding()" (click)="fab.toggle()">
         @if (fab.isAdding()) {
           <svg viewBox="0 0 384 512" width="13" height="13" fill="currentColor">
@@ -40,6 +43,7 @@ import { CommentFabService } from './shared/comment-fab.service';
           }
         }
       </button>
+      }
     </div>
   `,
   styles: [`
@@ -62,4 +66,13 @@ import { CommentFabService } from './shared/comment-fab.service';
 })
 export class AppComponent {
   fab = inject(CommentFabService);
+
+  private router = inject(Router);
+  showFab = toSignal(
+    this.router.events.pipe(
+      filter(e => e instanceof NavigationEnd),
+      map((e: NavigationEnd) => !e.urlAfterRedirects.includes('palet-editor'))
+    ),
+    { initialValue: !window.location.pathname.includes('palet-editor') }
+  );
 }
