@@ -84,14 +84,17 @@ const AREA3_NAMES = ['Poliklinisch','Klinisch','Spoed'];
                     [value]="c"
                     (input)="onColorInput($index, $event)">
                 </div>
-                <input
-                  type="text"
-                  class="hex-field"
-                  [value]="c"
-                  maxlength="7"
-                  spellcheck="false"
-                  (blur)="onHexChange($index, $event)"
-                  (keydown.enter)="onHexChange($index, $event)">
+                <div class="hex-wrap">
+                  <span class="hex-label">HEX</span>
+                  <input
+                    type="text"
+                    class="hex-field"
+                    [value]="c"
+                    maxlength="7"
+                    spellcheck="false"
+                    (blur)="onHexChange($index, $event)"
+                    (keydown.enter)="onHexChange($index, $event)">
+                </div>
               </div>
             }
           </div>
@@ -172,8 +175,10 @@ const AREA3_NAMES = ['Poliklinisch','Klinisch','Spoed'];
     .swatch-wrap { position: relative; width: 52px; height: 52px; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,.13); cursor: pointer; }
     .swatch { width: 100%; height: 100%; }
     .color-native { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; padding: 0; border: none; }
-    .hex-field { width: 64px; font-family: 'Courier New', monospace; font-size: 10.5px; text-align: center; border: 1px solid #E1E9EF; border-radius: 6px; padding: 4px 5px; color: #1A2B3C; background: #fff; transition: border-color .15s; outline: none; }
-    .hex-field:focus { border-color: #009BE5; }
+    .hex-wrap { display: flex; align-items: center; border: 1.5px solid #D0DCE4; border-radius: 7px; overflow: hidden; background: #fff; transition: border-color .15s; }
+    .hex-wrap:focus-within { border-color: #009BE5; }
+    .hex-label { font-size: 9px; font-weight: 700; letter-spacing: .04em; color: #9FB1BD; background: #F5F8FA; padding: 0 5px; border-right: 1px solid #E1E9EF; height: 100%; display: flex; align-items: center; flex-shrink: 0; }
+    .hex-field { width: 60px; font-family: 'Courier New', monospace; font-size: 11px; text-align: left; border: none; padding: 5px 6px; color: #1A2B3C; background: #fff; outline: none; }
 
     /* Dashboard */
     .dashboard-section { }
@@ -260,7 +265,6 @@ export class PaletteBuilderComponent implements OnInit {
     };
 
     // Stacked bar — 5 categories
-    const totals = MONTHS.map((_, mi) => STACK5.reduce((s, d) => s + d[mi], 0));
     this.opts['stack5'] = {
       tooltip: { trigger: 'axis' as const, axisPointer: { type: 'shadow' as const } },
       legend: LEGEND, grid: GRID_LEG,
