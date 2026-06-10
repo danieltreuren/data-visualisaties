@@ -1,4 +1,5 @@
-import { Component, Input, OnInit, OnDestroy, HostListener, ChangeDetectorRef, inject } from '@angular/core';
+import { Component, Input, OnInit, OnDestroy, HostListener, ChangeDetectorRef, inject, effect } from '@angular/core';
+import { CommentFabService } from './comment-fab.service';
 import { FormsModule } from '@angular/forms';
 import { createClient, SupabaseClient, RealtimeChannel } from '@supabase/supabase-js';
 
@@ -22,7 +23,7 @@ interface Pin {
   imports: [FormsModule],
   template: `
     <div class="pin-layer"
-         [class.adding]="isAdding"
+         [class.adding]="fabSvc.isAdding()"
          (click)="onLayerClick($event)">
 
       @for (c of pins; track c.id) {
@@ -80,22 +81,6 @@ interface Pin {
 
     </div>
 
-    <button class="comment-fab" [class.active]="isAdding" (click)="toggleAddMode()">
-      @if (isAdding) {
-        <svg viewBox="0 0 384 512" width="13" height="13" fill="currentColor">
-          <path d="M342.6 150.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0L192 210.7 86.6 105.4c-12.5-12.5-32.8-12.5-45.3 0s-12.5 32.8 0 45.3L146.7 256 41.4 361.4c-12.5 12.5-12.5 32.8 0 45.3s32.8 12.5 45.3 0L192 301.3 297.4 406.6c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L237.3 256l105.3-105.4z"/>
-        </svg>
-        Annuleren
-      } @else {
-        <svg viewBox="0 0 512 512" width="13" height="13" fill="currentColor">
-          <path d="M256 448c141.4 0 256-93.1 256-208S397.4 32 256 32S0 125.1 0 240c0 45.1 17.7 86.8 47.7 120.9c-1.9 24.5-11.4 46.3-21.4 62.9c-5.5 9.2-11.1 16.6-15.2 21.6c-2.1 2.5-3.7 4.4-4.9 5.7c-.6 .6-1 1.1-1.3 1.4l-.3 .3c-4.6 4.6-5.9 11.4-3.4 17.4c2.5 6 8.3 9.9 14.8 9.9c28.7 0 57.6-8.9 81.6-19.3c22.9-10 42.4-21.9 54.3-30.6c31.8 11.5 67 17.9 104.1 17.9z"/>
-        </svg>
-        Reactie plaatsen
-        @if (pins.length) {
-          <span class="fab-count">{{ pins.length }}</span>
-        }
-      }
-    </button>
   `,
   styles: [`
     :host {
@@ -292,51 +277,12 @@ interface Pin {
 
     .pin-btn-confirm:hover:not(:disabled) { background: #0691D3; }
     .pin-btn-confirm:disabled { opacity: 0.5; cursor: not-allowed; }
-
-    .comment-fab {
-      position: fixed;
-      bottom: 24px;
-      right: 24px;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      background: #fff;
-      border: 1px solid #D0DCE4;
-      border-radius: 50px;
-      padding: 10px 18px;
-      font-size: 13px;
-      font-weight: 500;
-      color: #475055;
-      cursor: pointer;
-      box-shadow: 0 4px 16px rgba(0,0,0,0.1);
-      transition: box-shadow .15s, border-color .15s, background .15s, color .15s;
-      pointer-events: all;
-      font-family: inherit;
-      z-index: 90;
-    }
-
-    .comment-fab:hover { box-shadow: 0 6px 20px rgba(0,0,0,0.15); border-color: #B9C7D0; }
-    .comment-fab.active { background: #FFF5F5; border-color: #FFBCCC; color: #E10036; }
-
-    .fab-count {
-      background: #009BE5;
-      color: #fff;
-      border-radius: 50%;
-      width: 18px;
-      height: 18px;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 10px;
-      font-weight: 700;
-    }
   `]
 })
 export class CommentOverlayComponent implements OnInit, OnDestroy {
   @Input() pageId = '';
 
   pins: Pin[] = [];
-  isAdding = false;
   pendingPin: { x_pct: number; y_pct: number } | null = null;
   newName = '';
   newText = '';
@@ -344,6 +290,17 @@ export class CommentOverlayComponent implements OnInit, OnDestroy {
 
   private channel: RealtimeChannel | null = null;
   private cdRef = inject(ChangeDetectorRef);
+  readonly fabSvc = inject(CommentFabService);
+
+  constructor() {
+    effect(() => {
+      if (!this.fabSvc.isAdding()) {
+        this.pendingPin = null;
+        this.newName = '';
+        this.newText = '';
+      }
+    });
+  }
 
   ngOnInit(): void {
     this.loadPins();
@@ -361,6 +318,7 @@ export class CommentOverlayComponent implements OnInit, OnDestroy {
       .eq('page_id', this.pageId)
       .order('created_at');
     this.pins = data ?? [];
+    this.fabSvc.setPinCount(this.pins.length);
     this.cdRef.detectChanges();
   }
 
@@ -388,17 +346,8 @@ export class CommentOverlayComponent implements OnInit, OnDestroy {
     return colors[hash % colors.length];
   }
 
-  toggleAddMode(): void {
-    this.isAdding = !this.isAdding;
-    if (!this.isAdding) {
-      this.pendingPin = null;
-      this.newName = '';
-      this.newText = '';
-    }
-  }
-
   onLayerClick(event: MouseEvent): void {
-    if (!this.isAdding || this.pendingPin) return;
+    if (!this.fabSvc.isAdding() || this.pendingPin) return;
     const layer = event.currentTarget as HTMLElement;
     const rect = layer.getBoundingClientRect();
     this.pendingPin = {
@@ -411,7 +360,7 @@ export class CommentOverlayComponent implements OnInit, OnDestroy {
 
   cancelPin(): void {
     this.pendingPin = null;
-    this.isAdding = false;
+    this.fabSvc.cancel();
   }
 
   async confirmPin(): Promise<void> {
@@ -426,10 +375,7 @@ export class CommentOverlayComponent implements OnInit, OnDestroy {
       text: this.newText.trim(),
     });
     this.saving = false;
-    this.pendingPin = null;
-    this.isAdding = false;
-    this.newName = '';
-    this.newText = '';
+    this.fabSvc.cancel();
   }
 
   deletePin(id: string, event: MouseEvent): void {
@@ -473,10 +419,7 @@ export class CommentOverlayComponent implements OnInit, OnDestroy {
 
   @HostListener('document:keydown.escape')
   onEscape(): void {
-    if (this.pendingPin) {
-      this.pendingPin = null;
-    } else if (this.isAdding) {
-      this.isAdding = false;
-    }
+    if (this.pendingPin) this.pendingPin = null;
+    else if (this.fabSvc.isAdding()) this.fabSvc.cancel();
   }
 }

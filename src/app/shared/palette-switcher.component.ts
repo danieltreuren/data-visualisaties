@@ -6,7 +6,6 @@ import { PaletteService } from './palette.service';
   standalone: true,
   template: `
     <div class="wrap" (click)="$event.stopPropagation()">
-
       @if (open) {
         <div class="popover">
           @for (p of svc.palettes; track $index) {
@@ -22,7 +21,6 @@ import { PaletteService } from './palette.service';
           }
         </div>
       }
-
       <button class="pill" [class.open]="open" (click)="toggle()">
         <span class="pill-dots">
           @for (c of active.colors.slice(0, 4); track c) {
@@ -34,34 +32,30 @@ import { PaletteService } from './palette.service';
           <path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
         </svg>
       </button>
-
     </div>
   `,
   styles: [`
-    :host { position: fixed; bottom: 24px; left: 24px; z-index: 91; }
-
-    .wrap { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
-
+    :host { display: block; }
+    .wrap { position: relative; display: inline-flex; flex-direction: column; align-items: flex-start; gap: 6px; }
     .pill {
       display: flex; align-items: center; gap: 7px;
       background: #fff; border: 1px solid #D0DCE4; border-radius: 50px;
       padding: 8px 14px 8px 10px; cursor: pointer; font-family: inherit;
       box-shadow: 0 4px 16px rgba(0,0,0,.1);
       transition: box-shadow .15s, border-color .15s;
+      white-space: nowrap;
     }
     .pill:hover { box-shadow: 0 6px 20px rgba(0,0,0,.14); border-color: #B9C7D0; }
     .pill.open  { border-color: #009BE5; }
-
     .pill-dots { display: flex; gap: 3px; }
-    .pill-label { font-size: 13px; font-weight: 500; color: #475055; white-space: nowrap; }
+    .pill-label { font-size: 13px; font-weight: 500; color: #475055; }
     .chevron { color: #9FB1BD; flex-shrink: 0; transition: transform .2s; }
     .chevron.up { transform: rotate(180deg); }
-
     .pdot { width: 9px; height: 9px; border-radius: 50%; display: block; }
-
     .popover {
+      position: absolute; bottom: calc(100% + 6px); left: 0;
       background: #fff; border: 1px solid #E1E9EF; border-radius: 12px;
-      padding: 6px; box-shadow: 0 8px 28px rgba(0,0,0,.14); min-width: 200px;
+      padding: 6px; box-shadow: 0 8px 28px rgba(0,0,0,.14); min-width: 200px; z-index: 10;
     }
     .pop-opt {
       display: flex; align-items: center; gap: 8px; width: 100%; text-align: left;
@@ -83,7 +77,6 @@ export class PaletteSwitcherComponent {
   get active() { return this.svc.palettes[this.svc.index()]; }
 
   toggle(): void { this.open = !this.open; }
-
   choose(i: number): void { this.svc.setIndex(i); this.open = false; }
 
   @HostListener('document:click')
