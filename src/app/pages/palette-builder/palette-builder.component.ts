@@ -1,8 +1,9 @@
-import { Component, OnInit, ChangeDetectorRef, inject, effect } from '@angular/core';
+import { Component, OnInit, ChangeDetectorRef, HostListener, inject, effect } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { NgxEchartsDirective } from 'ngx-echarts';
 import type { EChartsOption } from 'echarts';
 import { PaletteService } from '../../shared/palette.service';
+import { ColorPickerComponent } from '../../shared/color-picker.component';
 
 const AXIS_STYLE = {
   axisLine:  { lineStyle: { color: '#D0DCE4' } },
@@ -46,7 +47,7 @@ const AREA3_NAMES = ['Poliklinisch','Klinisch','Spoed'];
 @Component({
   selector: 'app-palette-builder',
   standalone: true,
-  imports: [RouterLink, NgxEchartsDirective],
+  imports: [RouterLink, NgxEchartsDirective, ColorPickerComponent],
   template: `
     <div class="page">
       <div class="container">
@@ -74,16 +75,21 @@ const AREA3_NAMES = ['Poliklinisch','Klinisch','Spoed'];
           </div>
           <div class="color-row">
             @for (c of colors; track $index) {
-              <div class="color-slot">
+              <div class="color-slot" (click)="$event.stopPropagation()">
                 <span class="slot-num">{{ $index + 1 }}</span>
-                <div class="swatch-wrap">
-                  <div class="swatch" [style.background]="c"></div>
-                  <input
-                    type="color"
-                    class="color-native"
-                    [value]="c"
-                    (input)="onColorInput($index, $event)">
+                <div class="swatch-btn"
+                  [style.background]="c"
+                  [class.open]="openPicker === $index"
+                  (click)="togglePicker($index)">
                 </div>
+                @if (openPicker === $index) {
+                  <div class="picker-popup">
+                    <app-color-picker
+                      [color]="c"
+                      (colorChange)="onPickerChange($index, $event)">
+                    </app-color-picker>
+                  </div>
+                }
                 <div class="hex-wrap">
                   <span class="hex-label">HEX</span>
                   <input
@@ -170,11 +176,12 @@ const AREA3_NAMES = ['Poliklinisch','Klinisch','Spoed'];
 
     /* Color slots */
     .color-row { display: flex; gap: 1rem; flex-wrap: wrap; }
-    .color-slot { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+    .color-slot { display: flex; flex-direction: column; align-items: center; gap: 6px; position: relative; }
     .slot-num { font-size: 10px; font-weight: 700; letter-spacing: .04em; color: #9FB1BD; }
-    .swatch-wrap { position: relative; width: 52px; height: 52px; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,.13); cursor: pointer; }
-    .swatch { width: 100%; height: 100%; }
-    .color-native { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; padding: 0; border: none; }
+    .swatch-btn { width: 52px; height: 52px; border-radius: 12px; cursor: pointer; box-shadow: 0 2px 10px rgba(0,0,0,.13); border: 2.5px solid transparent; transition: transform .15s, border-color .15s, box-shadow .15s; flex-shrink: 0; }
+    .swatch-btn:hover { transform: scale(1.06); }
+    .swatch-btn.open { border-color: #009BE5; box-shadow: 0 0 0 3px #B4E7FF; }
+    .picker-popup { position: absolute; top: calc(100% + 4px); left: 50%; transform: translateX(-50%); z-index: 500; background: #fff; border: 1px solid #E1E9EF; border-radius: 10px; box-shadow: 0 8px 30px rgba(0,0,0,.15); overflow: hidden; }
     .hex-wrap { display: flex; align-items: center; border: 1.5px solid #D0DCE4; border-radius: 7px; overflow: hidden; background: #fff; transition: border-color .15s; }
     .hex-wrap:focus-within { border-color: #009BE5; }
     .hex-label { font-size: 9px; font-weight: 700; letter-spacing: .04em; color: #9FB1BD; background: #F5F8FA; padding: 0 5px; border-right: 1px solid #E1E9EF; height: 100%; display: flex; align-items: center; flex-shrink: 0; }
@@ -207,6 +214,21 @@ export class PaletteBuilderComponent implements OnInit {
   colors: string[] = [];
   opts: Record<string, EChartsOption> = {};
   copied = false;
+  openPicker: number | null = null;
+
+  @HostListener('document:click')
+  closePickerOnOutside(): void { this.openPicker = null; this.cdRef.detectChanges(); }
+
+  @HostListener('document:keydown.escape')
+  closePickerOnEscape(): void { this.openPicker = null; this.cdRef.detectChanges(); }
+
+  togglePicker(i: number): void { this.openPicker = this.openPicker === i ? null : i; }
+
+  onPickerChange(i: number, color: string): void {
+    this.colors[i] = color;
+    this.buildCharts();
+    this.cdRef.detectChanges();
+  }
 
   private paletteService = inject(PaletteService);
   private cdRef = inject(ChangeDetectorRef);
@@ -223,12 +245,6 @@ export class PaletteBuilderComponent implements OnInit {
 
   reset(): void {
     this.colors = [...this.paletteService.colors()];
-    this.buildCharts();
-    this.cdRef.detectChanges();
-  }
-
-  onColorInput(i: number, event: Event): void {
-    this.colors[i] = (event.target as HTMLInputElement).value;
     this.buildCharts();
     this.cdRef.detectChanges();
   }
