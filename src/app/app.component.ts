@@ -15,12 +15,12 @@ import { PaletteSwitcherComponent } from './shared/palette-switcher.component';
         </a>
         <span class="nav-tag">Design Principles & Kennisbibliotheek</span>
         <a class="nav-editor-link" routerLink="/palet-editor" routerLinkActive="active">Palet editor</a>
-        <app-palette-switcher></app-palette-switcher>
       </div>
     </nav>
     <div class="content">
       <router-outlet />
     </div>
+    <app-palette-switcher></app-palette-switcher>
   `,
   styles: [`
     .nav {
@@ -46,7 +46,6 @@ import { PaletteSwitcherComponent } from './shared/palette-switcher.component';
     }
     .nav-editor-link { margin-left: auto; font-size: .82rem; font-weight: 500; color: #566A78; text-decoration: none; padding: 5px 10px; border-radius: 7px; border: 1px solid transparent; transition: all .15s; white-space: nowrap; }
     .nav-editor-link:hover, .nav-editor-link.active { color: #009BE5; border-color: #E1E9EF; background: #F9FBFD; }
-    app-palette-switcher { margin-left: .5rem; }
     .content { padding-top: 56px; }
     .nav-brand {
       display: flex;
