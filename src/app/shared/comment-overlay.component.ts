@@ -367,12 +367,18 @@ export class CommentOverlayComponent implements OnInit, OnDestroy {
   private subscribeRealtime(): void {
     this.channel = supabase
       .channel(`pins-${this.pageId}`)
-      .on('postgres_changes', {
-        event: '*',
-        schema: 'public',
-        table: 'pins',
-        filter: `page_id=eq.${this.pageId}`
-      }, () => this.loadPins())
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'pins', filter: `page_id=eq.${this.pageId}` },
+        () => this.loadPins())
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'pins', filter: `page_id=eq.${this.pageId}` },
+        () => this.loadPins())
+      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'pins', filter: `page_id=eq.${this.pageId}` },
+        (payload) => {
+          const deletedId = (payload.old as { id?: string })?.id;
+          if (deletedId) {
+            this.pins = this.pins.filter(p => p.id !== deletedId);
+            this.cdRef.detectChanges();
+          }
+        })
       .subscribe();
   }
 
