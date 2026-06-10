@@ -1,4 +1,4 @@
-import { Component, OnInit, ChangeDetectorRef, inject } from '@angular/core';
+import { Component, OnInit, ChangeDetectorRef, inject, effect } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { NgxEchartsDirective } from 'ngx-echarts';
 import type { EChartsOption } from 'echarts';
@@ -211,10 +211,15 @@ export class PaletteBuilderComponent implements OnInit {
   private paletteService = inject(PaletteService);
   private cdRef = inject(ChangeDetectorRef);
 
-  ngOnInit(): void {
-    this.colors = [...this.paletteService.colors()];
-    this.buildCharts();
+  constructor() {
+    effect(() => {
+      this.colors = [...this.paletteService.colors()];
+      this.buildCharts();
+      this.cdRef.detectChanges();
+    });
   }
+
+  ngOnInit(): void {}
 
   reset(): void {
     this.colors = [...this.paletteService.colors()];
