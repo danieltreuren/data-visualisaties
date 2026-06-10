@@ -1,4 +1,4 @@
-import { Component, OnInit, ChangeDetectorRef, HostListener, inject, effect } from '@angular/core';
+import { Component, OnInit, ChangeDetectorRef, inject, effect } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { NgxEchartsDirective } from 'ngx-echarts';
 import type { EChartsOption } from 'echarts';
@@ -74,38 +74,16 @@ const AREA3_NAMES = ['Poliklinisch','Klinisch','Spoed'];
           </div>
           <div class="color-row">
             @for (c of colors; track $index) {
-              <div class="color-slot" (click)="$event.stopPropagation()">
+              <div class="color-slot">
                 <span class="slot-num">{{ $index + 1 }}</span>
-                <div class="swatch-btn"
-                  [style.background]="c"
-                  [class.open]="openPicker === $index"
-                  (click)="togglePicker($index)">
+                <div class="swatch-wrap">
+                  <div class="swatch" [style.background]="c"></div>
+                  <input
+                    type="color"
+                    class="color-native"
+                    [value]="c"
+                    (input)="onColorInput($index, $event)">
                 </div>
-
-                @if (openPicker === $index) {
-                  <div class="picker-popup">
-                    <div class="popup-preview" [style.background]="c"></div>
-                    <div class="popup-hex-wrap">
-                      <span class="popup-hex-label">HEX</span>
-                      <input
-                        type="text"
-                        class="popup-hex-input"
-                        [value]="c"
-                        maxlength="7"
-                        spellcheck="false"
-                        placeholder="#000000"
-                        (input)="onHexInput($index, $event)"
-                        (keydown.enter)="closePicker()"
-                        (keydown.escape)="closePicker()">
-                    </div>
-                    <label class="visual-picker-btn">
-                      <span>🎨 Visueel kiezen</span>
-                      <input type="color" [value]="c" (input)="onColorInput($index, $event)"
-                        style="position:absolute;opacity:0;width:0;height:0">
-                    </label>
-                  </div>
-                }
-
                 <div class="hex-wrap">
                   <span class="hex-label">HEX</span>
                   <input
@@ -192,22 +170,11 @@ const AREA3_NAMES = ['Poliklinisch','Klinisch','Spoed'];
 
     /* Color slots */
     .color-row { display: flex; gap: 1rem; flex-wrap: wrap; }
-    .color-slot { display: flex; flex-direction: column; align-items: center; gap: 6px; position: relative; }
+    .color-slot { display: flex; flex-direction: column; align-items: center; gap: 6px; }
     .slot-num { font-size: 10px; font-weight: 700; letter-spacing: .04em; color: #9FB1BD; }
-    .swatch-btn { width: 52px; height: 52px; border-radius: 12px; cursor: pointer; box-shadow: 0 2px 10px rgba(0,0,0,.13); border: 2.5px solid transparent; transition: transform .15s, box-shadow .15s, border-color .15s; }
-    .swatch-btn:hover { transform: scale(1.06); }
-    .swatch-btn.open { border-color: #009BE5; box-shadow: 0 0 0 3px #B4E7FF, 0 2px 10px rgba(0,0,0,.13); }
-
-    /* Custom popup */
-    .picker-popup { position: absolute; top: calc(100% - 2px); left: 50%; transform: translateX(-50%); background: #fff; border: 1px solid #E1E9EF; border-radius: 12px; padding: 12px; box-shadow: 0 8px 28px rgba(0,0,0,.14); z-index: 300; min-width: 170px; display: flex; flex-direction: column; gap: 9px; }
-    .popup-preview { height: 44px; border-radius: 8px; flex-shrink: 0; border: 1px solid rgba(0,0,0,.06); }
-    .popup-hex-wrap { display: flex; align-items: center; border: 1.5px solid #D0DCE4; border-radius: 7px; overflow: hidden; background: #fff; transition: border-color .15s; }
-    .popup-hex-wrap:focus-within { border-color: #009BE5; }
-    .popup-hex-label { font-size: 9px; font-weight: 700; letter-spacing: .04em; color: #9FB1BD; background: #F5F8FA; padding: 0 6px; border-right: 1px solid #E1E9EF; align-self: stretch; display: flex; align-items: center; flex-shrink: 0; }
-    .popup-hex-input { width: 90px; font-family: 'Courier New', monospace; font-size: 13px; border: none; padding: 7px 8px; color: #1A2B3C; outline: none; background: #fff; }
-    .visual-picker-btn { display: flex; align-items: center; justify-content: center; gap: 5px; padding: 6px 10px; border: 1px solid #E1E9EF; border-radius: 7px; cursor: pointer; font-size: .78rem; color: #566A78; background: #F9FBFD; transition: border-color .15s, background .15s; position: relative; overflow: hidden; }
-    .visual-picker-btn:hover { border-color: #009BE5; background: #EAF8FF; color: #009BE5; }
-
+    .swatch-wrap { position: relative; width: 52px; height: 52px; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,.13); cursor: pointer; }
+    .swatch { width: 100%; height: 100%; }
+    .color-native { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; padding: 0; border: none; }
     .hex-wrap { display: flex; align-items: center; border: 1.5px solid #D0DCE4; border-radius: 7px; overflow: hidden; background: #fff; transition: border-color .15s; }
     .hex-wrap:focus-within { border-color: #009BE5; }
     .hex-label { font-size: 9px; font-weight: 700; letter-spacing: .04em; color: #9FB1BD; background: #F5F8FA; padding: 0 5px; border-right: 1px solid #E1E9EF; height: 100%; display: flex; align-items: center; flex-shrink: 0; }
@@ -240,26 +207,6 @@ export class PaletteBuilderComponent implements OnInit {
   colors: string[] = [];
   opts: Record<string, EChartsOption> = {};
   copied = false;
-  openPicker: number | null = null;
-
-  @HostListener('document:click')
-  onDocumentClick(): void { this.openPicker = null; this.cdRef.detectChanges(); }
-
-  @HostListener('document:keydown.escape')
-  onEscape(): void { this.openPicker = null; this.cdRef.detectChanges(); }
-
-  togglePicker(i: number): void { this.openPicker = this.openPicker === i ? null : i; }
-  closePicker(): void { this.openPicker = null; this.cdRef.detectChanges(); }
-
-  onHexInput(i: number, event: Event): void {
-    let val = (event.target as HTMLInputElement).value.trim();
-    if (!val.startsWith('#')) val = '#' + val;
-    if (/^#[0-9A-Fa-f]{6}$/.test(val)) {
-      this.colors[i] = val;
-      this.buildCharts();
-      this.cdRef.detectChanges();
-    }
-  }
 
   private paletteService = inject(PaletteService);
   private cdRef = inject(ChangeDetectorRef);
