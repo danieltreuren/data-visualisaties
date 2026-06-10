@@ -436,7 +436,7 @@ export class CommentOverlayComponent implements OnInit, OnDestroy {
     event.stopPropagation();
     this.pins = this.pins.filter(p => p.id !== id);
     this.cdRef.detectChanges();
-    supabase.from('pins').delete().eq('id', id);
+    supabase.from('pins').delete().eq('id', id).then();
   }
 
   startDrag(event: MouseEvent, pin: Pin): void {
